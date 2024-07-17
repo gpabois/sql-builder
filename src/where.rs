@@ -1,16 +1,29 @@
-use crate::traits;
+use crate::{traits, ToQuery};
 
-impl traits::WhereExpr for () {
-    const IS_IMPL: bool = false;
+/// WHERE <search_condition>
+pub struct WhereClause<SearchCond: traits::SearchCondition>{
+    search_condition: SearchCond
 }
 
-pub struct WhereExpr<E>(E)
-where
-    E: traits::Expression;
+impl<SearchCond> From<SearchCond> for WhereClause<SearchCond> where SearchCond: traits::SearchCondition {
+    fn from(search_condition: SearchCond) -> Self {
+        Self { search_condition }
+    }
+}
 
-impl<E> traits::WhereExpr for WhereExpr<E>
-where
-    E: traits::Expression,
+impl<SearchCond> traits::WhereClause for WhereClause<SearchCond> where SearchCond: traits::SearchCondition
 {
     const IS_IMPL: bool = true;
+}
+
+impl<SearchCond> ToQuery for WhereClause<SearchCond> where SearchCond: traits::SearchCondition
+{
+    fn write<W: std::io::Write>(
+        &self,
+        stream: &mut W,
+        ctx: &mut crate::ToQueryContext,
+    ) -> Result<(), std::io::Error> {
+        write!(stream, "FROM ")?;
+        self.search_condition.write(stream, ctx)
+    }
 }

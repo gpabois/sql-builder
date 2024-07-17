@@ -1,54 +1,46 @@
-use crate::traits;
-use sqlx::{Database, Encode};
-use std::{marker::PhantomData, ops::Deref};
+use crate::{traits, ToQuery};
 
-/// A bound parameter
-pub struct Bound<DB: Database, P>
-where
-    for<'r> P: Encode<'r, DB>,
-{
-    param: P,
-    _pht: PhantomData<DB>,
+pub struct Add<Lhs, Rhs>(Lhs, Rhs) where Lhs: traits::Term, Rhs: traits::Term;
+pub struct Sub<Lhs, Rhs>(Lhs, Rhs) where Lhs: traits::Term, Rhs: traits::Term;
+
+impl<Lhs, Rhs> traits::Term for Add<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {}
+impl<Lhs, Rhs> traits::NumericValueExpression for Add<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {}
+impl<Lhs, Rhs> traits::ValueExpression for Add<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {}
+impl<Lhs, Rhs> traits::DerivedColumn for Add<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {}
+impl<Lhs, Rhs> traits::SelectList for Add<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {
+    const IS_IMPL: bool = true;
 }
-
-impl<DB: Database, P> traits::Term for Bound<DB, P> where for<'r> P: Encode<'r, DB> {}
-
-/// A string value
-pub struct Str(String);
-impl From<&str> for Str {
-    fn from(value: &str) -> Self {
-        Self(value.to_owned())
-    }
-}
-impl From<String> for Str {
-    fn from(value: String) -> Self {
-        Self(value)
+impl<Lhs, Rhs> ToQuery for Add<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {
+    fn write<W: std::io::Write>(
+        &self,
+        stream: &mut W,
+        ctx: &mut crate::ToQueryContext,
+    ) -> Result<(), std::io::Error> {
+        todo!()
     }
 }
 
-impl traits::Term for Str {}
-
-pub struct Int(i32);
-impl From<i32> for Int {
-    #[inline]
-    fn from(value: i32) -> Self {
-        Self(value)
+impl<Lhs, Rhs> traits::Term for Sub<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {}
+impl<Lhs, Rhs> traits::NumericValueExpression for Sub<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {}
+impl<Lhs, Rhs> traits::ValueExpression for Sub<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {}
+impl<Lhs, Rhs> traits::DerivedColumn for Sub<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {}
+impl<Lhs, Rhs> traits::SelectList for Sub<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {
+    const IS_IMPL: bool = true;
+}
+impl<Lhs, Rhs> ToQuery for Sub<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {
+    fn write<W: std::io::Write>(
+        &self,
+        stream: &mut W,
+        ctx: &mut crate::ToQueryContext,
+    ) -> Result<(), std::io::Error> {
+        todo!()
     }
 }
-impl traits::Term for Int {}
 
-pub struct Long(i64);
-impl From<i64> for Long {
-    fn from(value: i64) -> Self {
-        Self(value)
-    }
+pub fn add<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> Add<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {
+    Add(lhs, rhs)
 }
-impl traits::Term for Long {}
 
-pub struct Decimal(f64);
-impl From<f64> for Decimal {
-    fn from(value: f64) -> Self {
-        Self(value)
-    }
+pub fn sub<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> Sub<Lhs, Rhs> where Lhs: traits::Term, Rhs: traits::Term {
+    Sub(lhs, rhs)
 }
-impl traits::Term for Decimal {}

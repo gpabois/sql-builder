@@ -1,7 +1,5 @@
-use crate::traits::{self, Expression};
+use crate::traits;
 
-pub struct GroupByExpr<E>(E)
-where
-    E: Expression;
+pub struct GroupByClause();
 
-impl<E> traits::GroupByExpr for GroupByExpr<E> where E: Expression {}
+impl traits::GroupByClause for GroupByClause {}

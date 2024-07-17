@@ -1,106 +1,114 @@
-use crate::{
-    alias::Alias,
-    traits::{self, FromExpr, SelectExpr, WhereExpr},
-    ToQuery,
-};
-
-pub enum SelectKind {
-    Default,
+use crate::{from::FromClause, traits, r#where::WhereClause, ToQuery};
+pub enum SetQuantifier {
     All,
     Distinct,
 }
 
 /// Select command
-pub struct SelectStatement<
-    Select: traits::SelectExpr,
-    From: traits::FromExpr,
-    Where: traits::WhereExpr,
-    GroupBy: traits::GroupByExpr,
-    Having: traits::HavingExpr,
-    OrderBy: traits::OrderByExpr,
+pub struct Select<
+    Select: traits::SelectList,
+    From: traits::FromClause,
+    Where: traits::WhereClause,
+    GroupBy: traits::GroupByClause,
+    Having: traits::HavingClause,
+    OrderBy: traits::OrderByClause,
     Limit: traits::LimitExpr,
 > {
-    pub kind: SelectKind,
-    pub select: Select,
-    pub from: From,
-    pub r#where: Where,
-    pub group_by: GroupBy,
-    pub having: Having,
-    pub order_by: OrderBy,
+    pub quantifier: Option<SetQuantifier>,
+    pub select_list: Select,
+    pub from_clause: From,
+    pub where_clause: Where,
+    pub group_by_clause: GroupBy,
+    pub having_clause: Having,
+    pub order_by_clause: OrderBy,
     pub limit: Limit,
 }
 
-pub type BlankSelectStatement = SelectStatement<(), (), (), (), (), (), ()>;
-pub type InitSelectStatement<S> = SelectStatement<S, (), (), (), (), (), ()>;
+pub type BlankSelectStatement = Select<(), (), (), (), (), (), ()>;
+pub type InitSelectStatement<S> = Select<S, (), (), (), (), (), ()>;
 
 impl BlankSelectStatement {
-    pub fn new<E: SelectExpr>(select: E) -> InitSelectStatement<E> {
+    pub fn new<S: traits::SelectList>(select: S) -> InitSelectStatement<S> {
         InitSelectStatement {
-            kind: SelectKind::Default,
-            select,
-            from: (),
-            r#where: (),
-            group_by: (),
-            having: (),
-            order_by: (),
+            quantifier: None,
+            select_list: select,
+            from_clause: (),
+            where_clause: (),
+            group_by_clause: (),
+            having_clause: (),
+            order_by_clause: (),
             limit: (),
         }
     }
 }
 
-impl<Select, From, Where, GroupBy, Having, OrderBy, Limit>
-    SelectStatement<Select, From, Where, GroupBy, Having, OrderBy, Limit>
+impl<SelectList, From, Where, GroupBy, Having, OrderBy, Limit>
+    Select<SelectList, From, Where, GroupBy, Having, OrderBy, Limit>
 where
-    Select: traits::SelectExpr,
-    From: traits::FromExpr,
-    Where: traits::WhereExpr,
-    GroupBy: traits::GroupByExpr,
-    Having: traits::HavingExpr,
-    OrderBy: traits::OrderByExpr,
+    SelectList: traits::SelectList,
+    From: traits::FromClause,
+    Where: traits::WhereClause,
+    GroupBy: traits::GroupByClause,
+    Having: traits::HavingClause,
+    OrderBy: traits::OrderByClause,
     Limit: traits::LimitExpr,
 {
-    pub fn from<E: FromExpr, F: Into<E>>(
+    #[inline]
+    pub fn distinct(mut self) -> Self {
+        self.quantifier = Some(SetQuantifier::Distinct);
+        self
+    }
+
+    #[inline]
+    pub fn all(mut self) -> Self {
+        self.quantifier = Some(SetQuantifier::All);
+        self
+    }
+
+    #[inline]
+    pub fn from<TableRef: traits::TableReference>(
         self,
-        from: F,
-    ) -> SelectStatement<Select, E, Where, GroupBy, Having, OrderBy, Limit> {
-        SelectStatement {
-            kind: self.kind,
-            select: self.select,
-            from: from.into(),
-            r#where: self.r#where,
-            group_by: self.group_by,
-            having: self.having,
-            order_by: self.order_by,
+        table_ref: TableRef,
+    ) -> Select<SelectList, FromClause<TableRef>, Where, GroupBy, Having, OrderBy, Limit> {
+        Select {
+            quantifier: None,
+            select_list: self.select_list,
+            from_clause: FromClause::from(table_ref),
+            where_clause: self.where_clause,
+            group_by_clause: self.group_by_clause,
+            having_clause: self.having_clause,
+            order_by_clause: self.order_by_clause,
             limit: self.limit,
         }
     }
 
-    pub fn r#where<E: WhereExpr, F: Into<E>>(
+    #[inline]
+    pub fn r#where<SearchCond: traits::SearchCondition>(
         self,
-        r#where: F,
-    ) -> SelectStatement<Select, From, E, GroupBy, Having, OrderBy, Limit> {
-        SelectStatement {
-            kind: self.kind,
-            select: self.select,
-            from: self.from,
-            r#where: r#where.into(),
-            group_by: self.group_by,
-            having: self.having,
-            order_by: self.order_by,
+        search_cond: SearchCond,
+    ) -> Select<SelectList, From, WhereClause<SearchCond>, GroupBy, Having, OrderBy, Limit> {
+        Select {
+            quantifier: None,
+            select_list: self.select_list,
+            from_clause: self.from_clause,
+            where_clause: WhereClause::from(search_cond),
+            group_by_clause: self.group_by_clause,
+            having_clause: self.having_clause,
+            order_by_clause: self.order_by_clause,
             limit: self.limit,
         }
     }
 }
 
-impl<Select, From, Where, GroupBy, Having, OrderBy, Limit> ToQuery
-    for SelectStatement<Select, From, Where, GroupBy, Having, OrderBy, Limit>
+impl<SelectList, From, Where, GroupBy, Having, OrderBy, Limit> ToQuery
+    for Select<SelectList, From, Where, GroupBy, Having, OrderBy, Limit>
 where
-    Select: traits::SelectExpr,
-    From: traits::FromExpr,
-    Where: traits::WhereExpr,
-    GroupBy: traits::GroupByExpr,
-    Having: traits::HavingExpr,
-    OrderBy: traits::OrderByExpr,
+    SelectList: traits::SelectList,
+    From: traits::FromClause,
+    Where: traits::WhereClause,
+    GroupBy: traits::GroupByClause,
+    Having: traits::HavingClause,
+    OrderBy: traits::OrderByClause,
     Limit: traits::LimitExpr,
 {
     fn write<W: std::io::prelude::Write>(
@@ -108,8 +116,28 @@ where
         stream: &mut W,
         ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
-        write!(stream, "SELECT ");
-        todo!()
+        write!(stream, "SELECT")?;
+        
+        if let Some(quantifier) = &self.quantifier {
+            write!(stream, " ")?;
+
+            match quantifier {
+                SetQuantifier::All => write!(stream, "ALL"),
+                SetQuantifier::Distinct => write!(stream, "DISTINCT"),
+            }?;
+        }
+
+        if SelectList::IS_IMPL {
+            write!(stream, " ")?;
+            self.select_list.write(stream, ctx)?;         
+        }
+
+        if From::IS_IMPL {
+            write!(stream, " ")?;
+            self.from_clause.write(stream, ctx)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -117,23 +145,45 @@ where
 /// Wildcard (*)
 pub struct All {}
 pub const ALL: All = All {};
-impl SelectExpr for All {}
-impl<T> SelectExpr for T where T: traits::Term {}
-impl<T> SelectExpr for Alias<T> where T: traits::Term {}
-
-/// A serie of select expressions.
-/// Work recursively.
-pub struct SelectExprChain<S1, S2>(pub S1, pub S2)
-where
-    S1: SelectExpr,
-    S2: SelectExpr;
+impl ToQuery for All {
+    fn write<W: std::io::Write>(
+        &self,
+        stream: &mut W,
+        _ctx: &mut crate::ToQueryContext,
+    ) -> Result<(), std::io::Error> {
+        write!(stream, "*")
+    }
+}
+impl traits::SelectList for All {
+    const IS_IMPL: bool = true;
+}
 
 #[cfg(test)]
 mod tests {
-    use super::{SelectStatement, ALL};
+    use crate::{identifier::id, traits::{DerivedColumn, SelectList}, ToQuery};
+
+    use super::{Select, ALL};
+
+    #[test]
+    fn test_select_list_of_identifiers() {
+        let selected_columns = id("col1")
+            .chain(
+                id("col2")
+                    .r#as(id("aliased_column"))
+            ).chain(id("col3"));
+
+        let stmt = Select::new(selected_columns);
+        let sql = stmt.to_string().unwrap();
+        
+        assert_eq!(sql, "SELECT col1, col2 AS aliased_column, col3");
+    }
 
     #[test]
     fn test_select_with_from() {
-        SelectStatement::new(ALL);
+        let stmt = Select::new(ALL)
+            .from(id("my_table"));
+
+        let sql = stmt.to_string().unwrap();
+        assert_eq!(sql, "SELECT * FROM my_table")
     }
 }

@@ -1,24 +1,44 @@
-use crate::{table::TableExpr, traits, ToQuery};
+use crate::{traits, ToQuery};
 
-impl traits::FromExpr for () {
+impl traits::FromClause for () {
     const IS_IMPL: bool = false;
 }
 
-pub struct FromExpr {
-    table: TableExpr,
+pub struct FromClause<TableRef: traits::TableReference> {
+    table_ref: TableRef,
 }
 
-impl ToQuery for FromExpr {
+impl<T> From<T> for FromClause<T> where T: traits::TableReference {
+    fn from(table_ref: T) -> Self {
+        Self { table_ref }
+    }
+}
+
+impl<TableRef> ToQuery for FromClause<TableRef> where TableRef: traits::TableReference {
     fn write<W: std::io::prelude::Write>(
         &self,
         stream: &mut W,
         ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
         write!(stream, "FROM ")?;
-        self.table.write(stream, ctx)
+        self.table_ref.write(stream, ctx)
     }
 }
 
-impl traits::FromExpr for FromExpr {
+impl<TableRef> traits::FromClause for FromClause<TableRef> where TableRef: traits::TableReference {
     const IS_IMPL: bool = true;
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{identifier::id, ToQuery};
+    use super::FromClause;
+
+    #[test]
+    fn test_from_identifier() {
+        let clause = FromClause::from(id("my_table"));
+        let sql = clause.to_string().unwrap();
+        assert_eq!(sql, "FROM my_table");
+    }
+
 }

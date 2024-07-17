@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 regex = "1.10.5"
 sqlx = "0.7.4"
+sql-builder-macros = {path = "./sql-builder-macros" }
