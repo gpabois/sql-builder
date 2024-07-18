@@ -1,4 +1,4 @@
-use crate::{from::FromClause, traits, r#where::WhereClause, ToQuery};
+use crate::{from::FromClause, r#where::WhereClause, traits, ToQuery};
 pub enum SetQuantifier {
     All,
     Distinct,
@@ -117,7 +117,7 @@ where
         ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
         write!(stream, "SELECT")?;
-        
+
         if let Some(quantifier) = &self.quantifier {
             write!(stream, " ")?;
 
@@ -129,7 +129,7 @@ where
 
         if SelectList::IS_IMPL {
             write!(stream, " ")?;
-            self.select_list.write(stream, ctx)?;         
+            self.select_list.write(stream, ctx)?;
         }
 
         if From::IS_IMPL {
@@ -160,28 +160,29 @@ impl traits::SelectList for All {
 
 #[cfg(test)]
 mod tests {
-    use crate::{identifier::id, traits::{DerivedColumn, SelectList}, ToQuery};
+    use crate::{
+        identifier::id,
+        traits::{DerivedColumn, SelectList},
+        ToQuery,
+    };
 
     use super::{Select, ALL};
 
     #[test]
     fn test_select_list_of_identifiers() {
         let selected_columns = id("col1")
-            .chain(
-                id("col2")
-                    .r#as(id("aliased_column"))
-            ).chain(id("col3"));
+            .chain(id("col2").r#as(id("aliased_column")))
+            .chain(id("col3"));
 
         let stmt = Select::new(selected_columns);
         let sql = stmt.to_string().unwrap();
-        
+
         assert_eq!(sql, "SELECT col1, col2 AS aliased_column, col3");
     }
 
     #[test]
     fn test_select_with_from() {
-        let stmt = Select::new(ALL)
-            .from(id("my_table"));
+        let stmt = Select::new(ALL).from(id("my_table"));
 
         let sql = stmt.to_string().unwrap();
         assert_eq!(sql, "SELECT * FROM my_table")

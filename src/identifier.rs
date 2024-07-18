@@ -1,6 +1,6 @@
+use crate::{error::Error, ToQuery};
 use regex::Regex;
 use sql_builder_macros::Identifier;
-use crate::{error::Error, ToQuery};
 
 #[derive(Clone, Identifier)]
 pub struct Identifier(String);
@@ -14,7 +14,7 @@ impl Identifier {
 
 impl TryFrom<&str> for Identifier {
     type Error = Error;
-    
+
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if !Self::is_valid(value) {
             return Err(Error::invalid_identifier(value.to_owned()));
@@ -35,7 +35,7 @@ impl ToQuery for Identifier {
 }
 
 /// Creates an identifier.
-/// 
+///
 /// Panics if ill-formatted.
 pub fn id(value: &str) -> Identifier {
     Identifier::try_from(value).expect("cannot creates identifier")

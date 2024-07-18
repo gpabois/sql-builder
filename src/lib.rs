@@ -6,17 +6,17 @@ pub mod select;
 pub mod select_list;
 
 pub mod bind;
-pub mod r#where;
 pub mod identifier;
 pub mod term;
+pub mod r#where;
 
-pub mod from;
 pub mod derived_column;
+pub mod from;
 
-pub mod search_condition;
-pub mod boolean_term;
 pub mod boolean_factor;
+pub mod boolean_term;
 pub mod boolean_test;
+pub mod search_condition;
 
 use std::io::Write;
 
@@ -49,7 +49,11 @@ impl ToQuery for () {
 }
 
 pub mod traits {
-    use crate::{boolean_factor::Not, boolean_test::{IsNotTruthValue, IsTruthValue}, ToQuery};
+    use crate::{
+        boolean_factor::Not,
+        boolean_test::{IsNotTruthValue, IsTruthValue},
+        ToQuery,
+    };
 
     pub trait QueryExpression {}
 
@@ -70,16 +74,21 @@ pub mod traits {
         const IS_IMPL: bool = false;
     }
 
-    /// <derived column> ::= <value expression> [ <as clause> ] 
-    /// 
+    /// <derived column> ::= <value expression> [ <as clause> ]
+    ///
     /// Inherits: [self::SelectList]
     /// Inherited by: [self::ValueExpression]
     pub trait DerivedColumn: SelectList + Sized {
-        fn r#as<ColName: ColumnName>(self, alias: ColName) -> crate::derived_column::DerivedColumn<Self, ColName> where Self: ValueExpression
+        fn r#as<ColName: ColumnName>(
+            self,
+            alias: ColName,
+        ) -> crate::derived_column::DerivedColumn<Self, ColName>
+        where
+            Self: ValueExpression,
         {
             crate::derived_column::DerivedColumn {
                 value_expression: self,
-                alias
+                alias,
             }
         }
     }
@@ -110,15 +119,15 @@ pub mod traits {
     pub trait SchemaName {}
 
     /// <qualifier> ::= <table name> | <correlation name>
-    /// 
-    /// Inherits: 
+    ///
+    /// Inherits:
     /// - [self::ColumnReference]
     /// - [self::SelectList]
     /// Inherited by [self::TableName]
     pub trait Qualifier {}
 
     /// A qualified name <schema_name>. ? <identifier>
-    /// 
+    ///
     /// Inherits: [self::TableReference]
     /// Inherited by : [self::QualifiedIdentifier]
     pub trait QualifiedName: ToQuery + TableReference {}
@@ -132,32 +141,32 @@ pub mod traits {
     /// <table name> [ <correlation specification> ]
     /// | <derived table> <correlation specification>
     /// | <joined table>
-    /// 
+    ///
     /// Inherited by [self::TableName]
     pub trait TableReference: ToQuery {}
 
     /// A table name
     /// <table name> ::= <qualified name> | <qualified local table name>
-    /// 
+    ///
     /// Inherited by [self::QualifiedName]
     pub trait TableName: ToQuery + TableReference {}
 
     /// <column reference> ::= [ <qualifier> <period> ] <column name>
-    /// 
+    ///
     /// See [crate::column_reference::QualifiedColumnName]
-    /// 
+    ///
     /// Inherits: [self::ValueExpressionPrimary]
     pub trait ColumnReference: ToQuery + ValueExpressionPrimary {}
 
     /// A column name
     /// <column name> ::= <identifier>
-    /// 
+    ///
     /// Inherited by: [self::Identifier]
     pub trait ColumnName: ToQuery {}
 
     /// An identifier
-    /// 
-    /// Inherits: 
+    ///
+    /// Inherits:
     /// - [self::QualifiedIdentifier]
     /// - [self::ColumnName]
     pub trait Identifier: QualifiedIdentifier + ColumnName {}
@@ -167,12 +176,12 @@ pub mod traits {
     /// | <string value expression>
     /// | <datetime value expression>
     /// | <interval value expression>
-    /// 
+    ///
     /// Inherits: [self::DerivedColumn]
-    /// Inherited by: 
-    /// - [self::NumericValueExpression], 
-    /// - [self::StringValueExpression], 
-    /// - [self::DateTimeValueExpression], 
+    /// Inherited by:
+    /// - [self::NumericValueExpression],
+    /// - [self::StringValueExpression],
+    /// - [self::DateTimeValueExpression],
     /// - [self::IntervalValueExpression]
     pub trait ValueExpression: DerivedColumn {}
 
@@ -188,7 +197,7 @@ pub mod traits {
     /// <numeric value expression> ::= <term>
     /// | <numeric value expression> <plus sign> <term>
     /// | <numeric value expression> <minus sign> <term>
-    /// 
+    ///
     /// Inherits: [self::ValueExpression]
     /// Inherited by: [self::Term]
     pub trait NumericValueExpression: ValueExpression {}
@@ -196,7 +205,7 @@ pub mod traits {
     /// <term> ::= <factor>
     /// | <term> <asterisk> <factor>
     /// | <term> <solidus> <factor>   
-    /// 
+    ///
     /// Inherits: [self::NumericValueExpression]
     /// Inherited by : [self::Factor]
     pub trait Term: NumericValueExpression {}
@@ -204,7 +213,7 @@ pub mod traits {
     pub trait Factor: Term {}
 
     /// <numeric primary> ::= <value expression primary> | <numeric value function>
-    /// 
+    ///
     /// Inherits: [self::Factor]
     pub trait NumericPrimary: Factor {}
 
@@ -220,33 +229,33 @@ pub mod traits {
     /// | <left paren> <value expression> <right paren>
     /// | <cast specification>
     /// | <bound value>
-    /// 
+    ///
     /// Inherits: [self::NumericPrimary]
     pub trait ValueExpressionPrimary: NumericPrimary {}
 
     /// <search condition> ::= <boolean term>
     /// | <search condition> OR <boolean term>
-    /// 
+    ///
     /// Inherited by : [self::BooleanTerm]
     pub trait SearchCondition: ToQuery {}
 
     /// <boolean term> ::= <boolean factor>
     /// | <boolean term> AND <boolean factor>
-    /// 
+    ///
     /// Inherits: [self::SearchCondition]
     /// Inherited by : [self::BooleanFactor]
     pub trait BooleanTerm: SearchCondition + ToQuery {}
 
     /// <boolean factor> ::= [ NOT ] <boolean test>
-    /// 
+    ///
     /// Inherits: [self::BooleanTerm]
     /// Inherited by: [self::BooleanTest]
-    pub trait BooleanFactor: BooleanTerm + ToQuery{}
+    pub trait BooleanFactor: BooleanTerm + ToQuery {}
 
-    /// <boolean test> ::= <boolean primary> [ IS [ NOT ] <truth value> ] 
-    /// 
+    /// <boolean test> ::= <boolean primary> [ IS [ NOT ] <truth value> ]
+    ///
     /// See : [crate::boolean_test::IsTruthValue, crate::boolean_test::IsNotTruthValue]
-    /// 
+    ///
     /// Inherits: [self::BooleanTerm]
     /// Inherited by: [self::BooleanPrimary]
     pub trait BooleanTest: BooleanTerm + Sized + ToQuery {
@@ -256,20 +265,23 @@ pub mod traits {
     }
 
     /// <boolean primary> ::= <predicate> | <left paren> <search condition> <right paren>
-    /// 
+    ///
     /// Inherits: [self::BooleanTest]
     pub trait BooleanPrimary: BooleanTest + Sized + ToQuery {
         fn is<TruthVal: TruthValue>(self, truth_value: TruthVal) -> IsTruthValue<Self, TruthVal> {
             IsTruthValue {
                 lhs: self,
-                rhs: truth_value
+                rhs: truth_value,
             }
         }
 
-        fn is_not<TruthVal: TruthValue>(self, truth_value: TruthVal) -> IsNotTruthValue<Self, TruthVal> {
+        fn is_not<TruthVal: TruthValue>(
+            self,
+            truth_value: TruthVal,
+        ) -> IsNotTruthValue<Self, TruthVal> {
             IsNotTruthValue {
                 lhs: self,
-                rhs: truth_value
+                rhs: truth_value,
             }
         }
     }
@@ -283,7 +295,7 @@ pub mod traits {
     /// | <exists predicate>
     /// | <match predicate>
     /// | <overlaps predicate>
-    /// 
+    ///
     /// Inherits: [self::BooleanPrimary]
     /// Inherited by :
     /// - [self::ComparisonPredicate],
@@ -298,46 +310,46 @@ pub mod traits {
     pub trait Predicate: BooleanPrimary + ToQuery {}
 
     /// <comparison predicate> ::= <row value constructor> <comp op> <row value constructor>
-    /// 
+    ///
     /// Inherits: [self::Predicate]
     pub trait ComparisonPredicate: Predicate + ToQuery {}
     /// <between predicate> ::= <row value constructor> [ NOT ] BETWEEN <row value constructor> AND <row value constructor>
-    /// 
+    ///
     /// Inherits: [self::Predicate]
     pub trait BetweenPredicate: Predicate + ToQuery {}
     /// <in predicate> ::= <row value constructor> [ NOT ] IN <in predicate value>
-    /// 
+    ///
     /// Inherits: [self::Predicate]
     pub trait InPredicate: Predicate + ToQuery {}
-    /// <like predicate> ::= <match value> [ NOT ] LIKE <pattern> [ ESCAPE <escape character> ] 
-    /// 
+    /// <like predicate> ::= <match value> [ NOT ] LIKE <pattern> [ ESCAPE <escape character> ]
+    ///
     /// Inherits: [self::Predicate]
     pub trait LikePredicate: Predicate + ToQuery {}
 
-    /// <null predicate> ::= <row value constructor> IS [ NOT ] NULL 
-    /// 
+    /// <null predicate> ::= <row value constructor> IS [ NOT ] NULL
+    ///
     /// Inherits: [self::Predicate]
     pub trait NullPredicate: Predicate + ToQuery {}
 
     /// <quantified comparison predicate> ::= <row value constructor> <comp op> <quantifier> <table subquery>
-    /// 
+    ///
     /// Inherits: [self::Predicate]
     pub trait QuantifiedComparisonPredicate: Predicate + ToQuery {}
 
     /// <exists predicate> ::= EXISTS <table subquery>
-    /// 
+    ///
     /// Inherits: [self::Predicate]
     pub trait ExistsPredicate: Predicate + ToQuery {}
     /// <match predicate> ::= <row value constructor> MATCH [ UNIQUE ] [ PARTIAL | FULL ] <table subquery>
-    /// 
+    ///
     /// Inherits: [self::Predicate]
     pub trait MatchPredicate: Predicate + ToQuery {}
 
     /// <overlaps predicate> ::= <row value constructor 1> OVERLAPS <row value constructor 2>
-    /// 
+    ///
     /// Inherits: [self::Predicate]
     pub trait OverlapsPredicate: Predicate + ToQuery {}
 
-    /// <truth value> ::= TRUE | FALSE | UNKNOWN 
+    /// <truth value> ::= TRUE | FALSE | UNKNOWN
     pub trait TruthValue {}
 }

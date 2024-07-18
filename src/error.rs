@@ -1,6 +1,6 @@
 #[derive(Debug, Clone)]
 pub enum ErrorKind {
-    InvalidIdentifier(String)
+    InvalidIdentifier(String),
 }
 
 impl std::fmt::Display for ErrorKind {

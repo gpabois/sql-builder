@@ -1,5 +1,5 @@
-use sql_builder_macros::SelectList;
 use crate::{traits, ToQuery};
+use sql_builder_macros::SelectList;
 
 /// A list of select expressions.
 /// Work recursively.
@@ -9,10 +9,10 @@ where
     S1: traits::SelectList,
     S2: traits::SelectList;
 
-impl<S1,S2> ToQuery for SelectList<S1, S2> 
+impl<S1, S2> ToQuery for SelectList<S1, S2>
 where
     S1: traits::SelectList,
-    S2: traits::SelectList
+    S2: traits::SelectList,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -24,3 +24,4 @@ where
         self.1.write(stream, ctx)
     }
 }
+
