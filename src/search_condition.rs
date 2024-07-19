@@ -1,16 +1,18 @@
-use crate::{grammar::{self, BooleanTerm, SearchCondition}, ToQuery};
+use crate::{
+    grammar::{self, BooleanTerm, SearchCondition},
+    ToQuery,
+};
 use sql_builder_macros::SearchCondition;
 
 #[derive(SearchCondition)]
 pub struct Or<Lhs, Rhs>
 where
     Lhs: grammar::SearchCondition,
-    Rhs: grammar::BooleanTerm
+    Rhs: grammar::BooleanTerm,
 {
-    lhs: Lhs, 
-    rhs: Rhs
+    lhs: Lhs,
+    rhs: Rhs,
 }
-
 
 impl<SearchCond, BoolTerm> ToQuery for Or<SearchCond, BoolTerm>
 where
@@ -31,5 +33,6 @@ where
 #[inline]
 /// Creates an OR search condition
 pub fn or(lhs: impl SearchCondition, rhs: impl BooleanTerm) -> impl SearchCondition {
-    Or {lhs, rhs}
+    Or { lhs, rhs }
 }
+

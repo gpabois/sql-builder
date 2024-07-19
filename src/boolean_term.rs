@@ -1,17 +1,19 @@
 use sql_builder_macros::BooleanTerm;
 
-use crate::{grammar::{self, BooleanFactor, BooleanTerm}, ToQuery};
+use crate::{
+    grammar::{self, BooleanFactor, BooleanTerm},
+    ToQuery,
+};
 
 #[derive(BooleanTerm)]
 pub struct And<BoolTerm, BoolFactor>
 where
-BoolTerm: grammar::BooleanTerm,
-BoolFactor: grammar::BooleanFactor
+    BoolTerm: grammar::BooleanTerm,
+    BoolFactor: grammar::BooleanFactor,
 {
     lhs: BoolTerm,
-    rhs: BoolFactor
+    rhs: BoolFactor,
 }
-
 
 impl<BoolTerm, BoolFactor> ToQuery for And<BoolTerm, BoolFactor>
 where
@@ -31,7 +33,7 @@ where
 
 #[inline]
 pub fn and(lhs: impl BooleanTerm, rhs: impl BooleanFactor) -> impl BooleanTerm {
-    And{lhs, rhs}
+    And { lhs, rhs }
 }
 
 #[cfg(test)]
@@ -49,3 +51,4 @@ mod tests {
         assert_eq!(sql, "a = b AND c <> d");
     }
 }
+

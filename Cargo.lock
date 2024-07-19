@@ -977,6 +977,7 @@ dependencies = [
  "phf",
  "proc-macro2",
  "quote",
+ "regex",
  "syn 2.0.71",
 ]
 

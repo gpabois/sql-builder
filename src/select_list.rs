@@ -24,4 +24,3 @@ where
         self.1.write(stream, ctx)
     }
 }
-

@@ -32,4 +32,3 @@ where
 {
     Bound::new(value)
 }
-

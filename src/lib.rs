@@ -9,19 +9,20 @@ pub mod table_reference_list;
 
 pub mod bind;
 pub mod identifier;
-pub mod term;
-pub mod numeric_value_expression;
-pub mod r#where;
 pub mod literal;
+pub mod numeric_value_expression;
+pub mod term;
+pub mod r#where;
 
 pub mod derived_column;
 pub mod from;
 
-pub mod comparison_predicate;
 pub mod boolean_factor;
+pub mod boolean_primary;
 pub mod boolean_term;
 pub mod boolean_test;
-pub mod boolean_primary;
+pub mod comparison_predicate;
+pub mod either;
 pub mod search_condition;
 
 use std::io::Write;
@@ -36,7 +37,7 @@ pub trait ToQuery {
         let sql = String::from_utf8(bytes)?;
         Ok(sql)
     }
-    
+
     fn write<W: Write>(
         &self,
         stream: &mut W,
@@ -54,51 +55,118 @@ impl ToQuery for () {
     }
 }
 
-pub use r#where::Where;
-pub use select::select;
-pub use search_condition::or;
-pub use boolean_term::and;
 pub use boolean_factor::not;
+pub use boolean_term::and;
 pub use boolean_test::{is_not_truth_value, is_truth_value};
-pub use comparison_predicate::{eq, neq, lte, lt, gt, gte};
-pub use numeric_value_expression::{add, sub};
-pub use term::{mult, div};
+pub use comparison_predicate::{eq, gt, gte, lt, lte, neq};
 pub use identifier::id;
 pub use literal::lit;
+pub use numeric_value_expression::{add, sub};
+pub use r#where::Where;
+pub use search_condition::or;
+pub use select::select;
+pub use term::{div, mult};
+
+pub use sql_builder_macros::id;
 
 pub mod grammar {
-    use crate::{boolean_factor::Not, boolean_primary::NestedSearchCondition, boolean_test::{IsNotTruthValue, IsTruthValue}, from::From, select_list::SelectLink, table_expression::{self, TableExpr}, table_reference_list::TableRefList, r#where::Where, ToQuery};
+    use crate::{
+        boolean_factor::Not,
+        boolean_primary::NestedSearchCondition,
+        boolean_test::{IsNotTruthValue, IsTruthValue},
+        either::Either,
+        from::From,
+        select_list::SelectLink,
+        table_expression::TableExpr,
+        table_reference_list::TableRefList,
+        ToQuery,
+    };
 
     pub trait Select: Sized + ToQuery {
+        type TableExpr: TableExpression;
+
         /// SELECT DISTINCT [...]
         fn distinct(self) -> impl Select;
-        
+
         /// SELECT ALL [...]
         fn all(self) -> impl Select;
 
-        /// Append table references to the from clause
-        /// 
-        /// See [self::FromClause::add_table_references]
-        fn and_from(self, table_refs: impl TableReferenceList) -> impl Select;
-    }   
+        /// See [self::TableExpression::append_from]
+        fn append_from(self, table_refs: impl TableReferenceList) -> impl Select {
+            self.transform_table_expression(|table_expr| table_expr.append_from(table_refs))
+        }
+
+        /// See [self::TableExpression::if_transform_from]
+        fn if_transform_from<NewFromClause>(
+            self,
+            predicate: bool,
+            then: impl FnOnce(<Self::TableExpr as TableExpression>::FromClause) -> NewFromClause,
+        ) -> impl Select
+        where
+            NewFromClause: FromClause,
+        {
+            self.transform_table_expression(move |table_expr| {
+                table_expr.if_transform_from(predicate, then)
+            })
+        }
+
+        /// Transform the underlying table expression.
+        fn transform_table_expression<NewTableExpr>(
+            self,
+            f: impl FnOnce(Self::TableExpr) -> NewTableExpr,
+        ) -> impl Select
+        where
+            NewTableExpr: TableExpression;
+    }
 
     /// A table expression
-    /// 
+    ///
     /// # Grammar rule
     /// <table expression> ::= <from clause>
     /// [ <where clause> ]
     /// [ <group by clause> ]
-    /// [ <having clause> ] 
-    pub trait TableExpression: ToQuery + Sized {      
-        /// Add the table references to the current from clause. 
-        fn and_from(self, table_refs: impl TableReferenceList) -> impl TableExpression;
-        
+    /// [ <having clause> ]
+    pub trait TableExpression: ToQuery + Sized {
+        type FromClause: FromClause;
+        type WhereClause: WhereClause;
+
+        /// Transform the from clause, and returns a new table expression
+        fn transform_from<NewFromClause: FromClause>(
+            self,
+            transform: impl FnOnce(Self::FromClause) -> NewFromClause,
+        ) -> impl TableExpression;
+
+        /// Transform the where clause, and returns a new table expression
+        fn transform_where<NewWhereClause: WhereClause>(
+            self,
+            transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
+        ) -> impl TableExpression;
+
+        /// Append table references to the current from clause.
+        fn append_from(self, table_refs: impl TableReferenceList) -> impl TableExpression {
+            self.transform_from(|from_clause| from_clause.add_table_references(table_refs))
+        }
+
+        /// Transform the from clause if the predicate is true.
+        fn if_transform_from<NewFromClause>(
+            self,
+            predicate: bool,
+            then: impl FnOnce(Self::FromClause) -> NewFromClause,
+        ) -> impl TableExpression
+        where
+            NewFromClause: FromClause,
+        {
+            self.transform_from(move |from_clause| Either::if_else(predicate, from_clause, then))
+        }
+
         /// Replace the current WHERE clause with another one.
-        fn r#where(self, where_clause: impl SearchCondition) -> impl TableExpression;
+        fn r#where(self, where_clause: impl SearchCondition) -> impl TableExpression {
+            self.transform_where(|_| crate::Where::new(where_clause))
+        }
     }
 
     /// A list of selected values.
-    /// 
+    ///
     /// # Grammar rule
     /// <select list> ::= <asterisk> | (<derived column> | <qualifier> <period> <asterisk>)
     pub trait SelectList: Sized + ToQuery {
@@ -115,7 +183,7 @@ pub mod grammar {
     }
 
     /// A derived column.
-    /// 
+    ///
     /// # Grammar rule
     /// ```ebnf
     /// <derived column> ::= <value expression> [ <as clause> ]
@@ -139,7 +207,7 @@ pub mod grammar {
     }
 
     /// A where clause
-    /// 
+    ///
     /// # SQL
     /// ```sql
     /// WHERE <search condition>
@@ -151,56 +219,76 @@ pub mod grammar {
         const IS_IMPL: bool = false;
     }
 
-    /// A from clause 
-    /// 
+    /// A from clause
+    ///
     /// Super: [self::TableExpression]
-    /// 
+    ///
     /// # SQL
     /// ```sql
     /// FROM <table references>
     /// ```
     pub trait FromClause: TableExpression + ToQuery {
         /// Append table references to the from clause
-        /// 
+        ///
         /// See [self::TableReferenceList]
         fn add_table_references(self, tab_refs: impl TableReferenceList) -> impl FromClause;
     }
 
     impl TableExpression for () {
-        fn r#where(self, search_cond: impl SearchCondition) -> impl TableExpression {
+        type FromClause = ();
+        type WhereClause = ();
+
+        fn transform_from<NewFromClause: FromClause>(
+            self,
+            transform: impl FnOnce(Self::FromClause) -> NewFromClause,
+        ) -> impl TableExpression {
             TableExpr {
-                from_clause: (),
-                where_clause: Where::new(search_cond),
-                group_by: (),
-                having: ()
-            }
-        }
-        
-        fn and_from(self, table_refs: impl TableReferenceList) -> impl TableExpression {
-            TableExpr {
-                from_clause: From::new(table_refs),
+                from_clause: transform(()),
                 where_clause: (),
                 group_by: (),
-                having: ()
+                having: (),
+            }
+        }
+
+        fn transform_where<NewWhereClause: WhereClause>(
+            self,
+            transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
+        ) -> impl TableExpression {
+            TableExpr {
+                from_clause: (),
+                where_clause: transform(()),
+                group_by: (),
+                having: (),
             }
         }
     }
 
     impl FromClause for () {
-        fn add_table_references(self, table_refs: impl TableReferenceList) -> impl FromClause 
-        {
-            From{ table_refs }
+        fn add_table_references(self, table_refs: impl TableReferenceList) -> impl FromClause {
+            From { table_refs }
         }
     }
-    
-    pub trait HavingClause {}
-    impl HavingClause for () {}
 
-    pub trait GroupByClause {}
-    impl GroupByClause for () {}
+    pub trait HavingClause: ToQuery {
+        const IS_IMPL: bool;
+    }
+    impl HavingClause for () {
+        const IS_IMPL: bool = false;
+    }
 
-    pub trait OrderByClause {}
-    impl OrderByClause for () {}
+    pub trait GroupByClause: ToQuery {
+        const IS_IMPL: bool;
+    }
+    impl GroupByClause for () {
+        const IS_IMPL: bool = false;
+    }
+
+    pub trait OrderByClause: ToQuery {
+        const IS_IMPL: bool;
+    }
+    impl OrderByClause for () {
+        const IS_IMPL: bool = true;
+    }
 
     pub trait LimitExpr {}
     impl LimitExpr for () {}
@@ -227,14 +315,11 @@ pub mod grammar {
     /// Children: [self::Identifier]
     pub trait QualifiedIdentifier: QualifiedName + ToQuery {}
 
-    /// <table reference list> ::= <table reference> 
+    /// <table reference list> ::= <table reference>
     /// | <table reference list> <comma> <table reference>
     pub trait TableReferenceList: ToQuery + Sized {
         fn chain<Rhs: TableReferenceList>(self, rhs: Rhs) -> TableRefList<Self, Rhs> {
-            TableRefList {
-                lhs: self,
-                rhs
-            }
+            TableRefList { lhs: self, rhs }
         }
     }
 
@@ -280,7 +365,7 @@ pub mod grammar {
     /// | <datetime value expression>
     /// | <interval value expression>
     ///
-    /// Super: 
+    /// Super:
     /// - [self::DerivedColumn],
     /// - [self::RowValueConstructorElement]
     /// Children:
@@ -326,7 +411,7 @@ pub mod grammar {
     pub trait NumericValueFunction {}
 
     /// The primary expression of a value
-    /// 
+    ///
     /// ```ebnf
     /// <value expression primary> ::= <value specification>
     /// | <column reference>
@@ -339,12 +424,12 @@ pub mod grammar {
     /// ```
     ///
     /// # Differences with ISO/IEC 9075:1992
-    /// 
+    ///
     /// *unsigned value specification* is replaced by *value specification*, and
     /// *bound value* is injected to allow parameters bindings for sqlx
-    /// 
+    ///
     /// Super: [self::NumericPrimary]
-    /// 
+    ///
     pub trait ValueExpressionPrimary: NumericPrimary {}
 
     /// A specified value
@@ -352,7 +437,7 @@ pub mod grammar {
     pub trait ValueSpecification: ValueExpressionPrimary + ToQuery {}
 
     /// A literal
-    /// 
+    ///
     /// Super: [self::ValueSpecification]
     pub trait Literal: ValueSpecification + ToQuery {}
 
@@ -361,7 +446,6 @@ pub mod grammar {
     ///
     /// Children : [self::BooleanTerm]
     pub trait SearchCondition: ToQuery + Sized {
-
         /// Allows the search condition to be nested within another search condition.
         fn nest(self) -> impl BooleanPrimary {
             NestedSearchCondition(self)
@@ -369,7 +453,7 @@ pub mod grammar {
     }
 
     /// A boolean term.
-    /// 
+    ///
     /// ```ebnf
     /// <boolean term> ::= <boolean factor> | <boolean term> AND <boolean factor>
     /// ```
@@ -419,7 +503,7 @@ pub mod grammar {
     }
 
     /// A predicate
-    /// 
+    ///
     /// # Grammar rule
     /// ```ebnf
     /// (predicate) ::= (comparison predicate)
@@ -433,7 +517,7 @@ pub mod grammar {
     /// | (overlaps predicate)
     ///```
     /// Super: [self::BooleanPrimary]
-    /// 
+    ///
     /// Children:
     /// - [self::ComparisonPredicate],
     /// - [self::BetweenPredicate],
@@ -447,27 +531,27 @@ pub mod grammar {
     pub trait Predicate: BooleanPrimary + ToQuery {}
 
     /// A predicate based on values comparison.
-    /// 
+    ///
     /// # Grammar rule
     /// ```ebnf
     /// <comparison predicate> ::= <row value constructor> <comp op> <row value constructor>
     /// ```
-    /// 
+    ///
     /// Super: [self::Predicate]
     pub trait ComparisonPredicate: Predicate + ToQuery {}
 
     /// A predicate based on ranged values.
-    /// 
+    ///
     /// # Grammar rule
     /// ```ebnf
     /// <between predicate> ::= <row value constructor> [ NOT ] BETWEEN <row value constructor> AND <row value constructor>
     /// ```
-    /// 
+    ///
     /// Super: [self::Predicate]
     pub trait BetweenPredicate: Predicate + ToQuery {}
-    
+
     /// A predicate that returns true if a value is within in a set.
-    /// 
+    ///
     /// # Grammar rule
     /// ```ebnf
     /// <in predicate> ::= <row value constructor> [ NOT ] IN <in predicate value>
@@ -505,22 +589,25 @@ pub mod grammar {
     pub trait OverlapsPredicate: Predicate + ToQuery {}
 
     /// <truth value> ::= TRUE | FALSE | UNKNOWN
-    pub trait TruthValue : ToQuery {}
+    pub trait TruthValue: ToQuery {}
 
     pub trait RowValueConstructor: ToQuery {}
 
     /// A comma-separated list of [self::RowValueElement]
-    /// 
-    /// Super: 
+    ///
+    /// Super:
     /// - [self::RowValueConstructor]
     pub trait RowValueConstructorList: RowValueConstructor + ToQuery {}
 
     ///
-    /// 
-    /// Super: 
+    ///
+    /// Super:
     /// - [self::RowValueConstructor]
     /// - [self::RowValueConstructorList]
     /// Children:
     /// - [self::ValueExpression]
-    pub trait RowValueConstructorElement: RowValueConstructor + RowValueConstructorList + ToQuery {}
+    pub trait RowValueConstructorElement:
+        RowValueConstructor + RowValueConstructorList + ToQuery
+    {
+    }
 }

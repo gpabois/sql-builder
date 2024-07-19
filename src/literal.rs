@@ -9,7 +9,7 @@ pub enum Lit {
     Long(i64),
     UnsignedLong(u64),
     Float(f32),
-    Double(f64)
+    Double(f64),
 }
 
 impl From<&str> for Lit {
@@ -59,6 +59,10 @@ impl ToQuery for Lit {
 }
 
 /// Creates a literal.
-pub fn lit<V>(value: V) -> impl Literal where Lit: From<V> {
+pub fn lit<V>(value: V) -> impl Literal
+where
+    Lit: From<V>,
+{
     Lit::from(value)
 }
+

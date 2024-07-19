@@ -1,6 +1,9 @@
 use sql_builder_macros::ComparisonPredicate;
 
-use crate::{grammar::{ComparisonPredicate, RowValueConstructor}, ToQuery};
+use crate::{
+    grammar::{ComparisonPredicate, RowValueConstructor},
+    ToQuery,
+};
 
 enum ComparisonKind {
     Equals,
@@ -8,7 +11,7 @@ enum ComparisonKind {
     LessThan,
     GreaterThan,
     LessThanOrEquals,
-    GreaterThanOrEquals
+    GreaterThanOrEquals,
 }
 
 impl AsRef<str> for ComparisonKind {
@@ -19,7 +22,7 @@ impl AsRef<str> for ComparisonKind {
             ComparisonKind::LessThan => "<",
             ComparisonKind::GreaterThan => ">",
             ComparisonKind::LessThanOrEquals => "<=",
-            ComparisonKind::GreaterThanOrEquals => ">="
+            ComparisonKind::GreaterThanOrEquals => ">=",
         }
     }
 }
@@ -35,17 +38,20 @@ impl ToQuery for ComparisonKind {
 }
 
 #[derive(ComparisonPredicate)]
-pub struct Compare<Lhs, Rhs> 
-where Lhs: RowValueConstructor, 
-      Rhs: RowValueConstructor
+pub struct Compare<Lhs, Rhs>
+where
+    Lhs: RowValueConstructor,
+    Rhs: RowValueConstructor,
 {
     lhs: Lhs,
     op: ComparisonKind,
-    rhs: Rhs
+    rhs: Rhs,
 }
 
-impl<Lhs, Rhs> ToQuery for Compare<Lhs, Rhs> 
-where Lhs: RowValueConstructor, Rhs: RowValueConstructor 
+impl<Lhs, Rhs> ToQuery for Compare<Lhs, Rhs>
+where
+    Lhs: RowValueConstructor,
+    Rhs: RowValueConstructor,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -61,55 +67,85 @@ where Lhs: RowValueConstructor, Rhs: RowValueConstructor
 }
 
 /// Checks if two values are equals
-/// 
+///
 /// # SQL
 /// ```sql
 /// <lhs> = <rhs>
 /// ```
-pub fn eq(lhs: impl RowValueConstructor, rhs: impl RowValueConstructor) -> impl ComparisonPredicate {
+pub fn eq(
+    lhs: impl RowValueConstructor,
+    rhs: impl RowValueConstructor,
+) -> impl ComparisonPredicate {
     Compare {
-        lhs, rhs, op: ComparisonKind::Equals
+        lhs,
+        rhs,
+        op: ComparisonKind::Equals,
     }
 }
 
 #[inline]
 /// Checks if two values are not equals
-/// 
+///
 /// # SQL
 /// ```sql
 /// <lhs> <> <rhs>
 /// ```
-pub fn neq(lhs: impl RowValueConstructor, rhs: impl RowValueConstructor) -> impl ComparisonPredicate {
+pub fn neq(
+    lhs: impl RowValueConstructor,
+    rhs: impl RowValueConstructor,
+) -> impl ComparisonPredicate {
     Compare {
-        lhs, rhs, op: ComparisonKind::NotEquals
+        lhs,
+        rhs,
+        op: ComparisonKind::NotEquals,
     }
 }
 
 #[inline]
-pub fn lt(lhs: impl RowValueConstructor, rhs: impl RowValueConstructor) -> impl ComparisonPredicate {
+pub fn lt(
+    lhs: impl RowValueConstructor,
+    rhs: impl RowValueConstructor,
+) -> impl ComparisonPredicate {
     Compare {
-        lhs, rhs, op: ComparisonKind::LessThan
+        lhs,
+        rhs,
+        op: ComparisonKind::LessThan,
     }
 }
 
 #[inline]
-pub fn lte(lhs: impl RowValueConstructor, rhs: impl RowValueConstructor) -> impl ComparisonPredicate {
+pub fn lte(
+    lhs: impl RowValueConstructor,
+    rhs: impl RowValueConstructor,
+) -> impl ComparisonPredicate {
     Compare {
-        lhs, rhs, op: ComparisonKind::LessThanOrEquals
+        lhs,
+        rhs,
+        op: ComparisonKind::LessThanOrEquals,
     }
 }
 
 #[inline]
-pub fn gt(lhs: impl RowValueConstructor, rhs: impl RowValueConstructor) -> impl ComparisonPredicate {
+pub fn gt(
+    lhs: impl RowValueConstructor,
+    rhs: impl RowValueConstructor,
+) -> impl ComparisonPredicate {
     Compare {
-        lhs, rhs, op: ComparisonKind::GreaterThan
+        lhs,
+        rhs,
+        op: ComparisonKind::GreaterThan,
     }
 }
 
 #[inline]
-pub fn gte(lhs: impl RowValueConstructor, rhs: impl RowValueConstructor) -> impl ComparisonPredicate {
+pub fn gte(
+    lhs: impl RowValueConstructor,
+    rhs: impl RowValueConstructor,
+) -> impl ComparisonPredicate {
     Compare {
-        lhs, rhs, op: ComparisonKind::GreaterThanOrEquals
+        lhs,
+        rhs,
+        op: ComparisonKind::GreaterThanOrEquals,
     }
 }
 
@@ -159,3 +195,4 @@ mod tests {
         assert_eq!(sql, "test >= 10.123");
     }
 }
+

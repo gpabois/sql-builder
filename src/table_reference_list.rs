@@ -3,15 +3,20 @@ use sql_builder_macros::TableReferenceList;
 use crate::{grammar::TableReferenceList, ToQuery};
 
 #[derive(TableReferenceList)]
-pub struct TableRefList<Lhs, Rhs> 
-where Lhs: TableReferenceList, 
-      Rhs: TableReferenceList 
+pub struct TableRefList<Lhs, Rhs>
+where
+    Lhs: TableReferenceList,
+    Rhs: TableReferenceList,
 {
     pub(crate) lhs: Lhs,
-    pub(crate) rhs: Rhs
+    pub(crate) rhs: Rhs,
 }
 
-impl<Lhs, Rhs> ToQuery for TableRefList<Lhs, Rhs> where Lhs: TableReferenceList, Rhs: TableReferenceList {
+impl<Lhs, Rhs> ToQuery for TableRefList<Lhs, Rhs>
+where
+    Lhs: TableReferenceList,
+    Rhs: TableReferenceList,
+{
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
@@ -22,3 +27,4 @@ impl<Lhs, Rhs> ToQuery for TableRefList<Lhs, Rhs> where Lhs: TableReferenceList,
         self.rhs.write(stream, ctx)
     }
 }
+

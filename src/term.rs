@@ -1,10 +1,13 @@
 use sql_builder_macros::Term;
 
-use crate::{grammar::{Factor, Term}, ToQuery};
+use crate::{
+    grammar::{Factor, Term},
+    ToQuery,
+};
 
 enum TermOperandKind {
     Mult,
-    Div
+    Div,
 }
 
 impl AsRef<str> for TermOperandKind {
@@ -27,16 +30,20 @@ impl ToQuery for TermOperandKind {
 }
 
 #[derive(Term)]
-pub struct TermOperand<Lhs, Rhs> 
-where Lhs: Term, Rhs: Factor
+pub struct TermOperand<Lhs, Rhs>
+where
+    Lhs: Term,
+    Rhs: Factor,
 {
     lhs: Lhs,
     kind: TermOperandKind,
-    rhs: Rhs
+    rhs: Rhs,
 }
 
 impl<Lhs, Rhs> ToQuery for TermOperand<Lhs, Rhs>
-where Lhs: Term, Rhs: Factor,
+where
+    Lhs: Term,
+    Rhs: Factor,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -52,19 +59,19 @@ where Lhs: Term, Rhs: Factor,
 }
 
 #[inline]
-pub fn mult<Lhs, Rhs>(lhs: impl Term, rhs: impl Factor) -> impl Term
-{
+pub fn mult<Lhs, Rhs>(lhs: impl Term, rhs: impl Factor) -> impl Term {
     TermOperand {
-        lhs, rhs, kind: TermOperandKind::Mult
+        lhs,
+        rhs,
+        kind: TermOperandKind::Mult,
     }
 }
 
 #[inline]
-pub fn div<Lhs, Rhs>(lhs: impl Term, rhs: impl Factor) -> impl Term
-{
+pub fn div<Lhs, Rhs>(lhs: impl Term, rhs: impl Factor) -> impl Term {
     TermOperand {
-        lhs, rhs, kind: TermOperandKind::Div
+        lhs,
+        rhs,
+        kind: TermOperandKind::Div,
     }
 }
-
-

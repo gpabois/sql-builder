@@ -1,42 +1,61 @@
-use crate::{grammar::{FromClause, SearchCondition, TableExpression, TableReferenceList}, table_expression::TableExpr, r#where::Where, ToQuery};
+use crate::{
+    either::Either,
+    grammar::{FromClause, SearchCondition, TableExpression, TableReferenceList},
+    r#where::Where,
+    table_expression::TableExpr,
+    ToQuery,
+};
 
-pub struct From<TabRefs> where TabRefs: TableReferenceList {
+pub struct From<TabRefs>
+where
+    TabRefs: TableReferenceList,
+{
     pub(crate) table_refs: TabRefs,
 }
 
-impl<TabRefs> From<TabRefs> where TabRefs: TableReferenceList {
+impl<TabRefs> From<TabRefs>
+where
+    TabRefs: TableReferenceList,
+{
     pub fn new(table_refs: TabRefs) -> Self {
-        Self {table_refs}
+        Self { table_refs }
     }
 }
 
-impl<TabRefs> FromClause for From<TabRefs> 
-where TabRefs: TableReferenceList {
+impl<TabRefs> FromClause for From<TabRefs>
+where
+    TabRefs: TableReferenceList,
+{
     fn add_table_references(self, table_refs: impl TableReferenceList) -> impl FromClause {
         From {
-            table_refs: self.table_refs.chain(table_refs)
+            table_refs: self.table_refs.chain(table_refs),
         }
     }
 }
 
-impl<TableRefs> TableExpression for From<TableRefs> where TableRefs: TableReferenceList 
+impl<TableRefs> TableExpression for From<TableRefs>
+where
+    TableRefs: TableReferenceList,
 {
-    fn r#where(self, search_condition: impl SearchCondition) -> impl TableExpression {
+    type FromClause = Self;
+    type WhereClause = ();
+
+    fn transform_from<NewFromClause: FromClause>(
+        self,
+        transform: impl FnOnce(Self::FromClause) -> NewFromClause,
+    ) -> impl TableExpression {
+        transform(self)
+    }
+
+    fn transform_where<NewWhereClause: crate::grammar::WhereClause>(
+        self,
+        transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
+    ) -> impl TableExpression {
         TableExpr {
             from_clause: self,
-            where_clause: Where::new(search_condition),
+            where_clause: transform(()),
             group_by: (),
             having: (),
-        }
-    }
-        
-    fn and_from(self, table_refs: impl TableReferenceList) -> impl TableExpression 
-    {
-        TableExpr {
-            from_clause: self.add_table_references(table_refs),
-            where_clause: (),
-            group_by: (),
-            having: ()
         }
     }
 }
@@ -55,6 +74,15 @@ where
     }
 }
 
+impl<Lhs: FromClause, Rhs: FromClause> FromClause for Either<Lhs, Rhs> {
+    fn add_table_references(self, tab_refs: impl TableReferenceList) -> impl FromClause {
+        match self {
+            Either::Left(left) => Either::Left(left.add_table_references(tab_refs)),
+            Either::Right(right) => Either::Right(right.add_table_references(tab_refs)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::From;
@@ -67,4 +95,3 @@ mod test {
         assert_eq!(sql, "FROM my_table");
     }
 }
-

@@ -1,6 +1,9 @@
 use sql_builder_macros::BooleanFactor;
 
-use crate::{grammar::{self, BooleanFactor, BooleanTest}, ToQuery};
+use crate::{
+    grammar::{self, BooleanFactor, BooleanTest},
+    ToQuery,
+};
 
 #[derive(BooleanFactor)]
 pub struct Not<BoolTest>(pub(crate) BoolTest)

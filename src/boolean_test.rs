@@ -1,6 +1,9 @@
 use sql_builder_macros::BooleanTest;
 
-use crate::{grammar::{self, BooleanPrimary, BooleanTest, TruthValue}, ToQuery};
+use crate::{
+    grammar::{self, BooleanPrimary, BooleanTest, TruthValue},
+    ToQuery,
+};
 
 #[derive(BooleanTest)]
 pub struct IsTruthValue<BoolPrimary, TruthValue>
@@ -56,10 +59,10 @@ where
 
 #[inline]
 pub fn is_truth_value(lhs: impl BooleanPrimary, rhs: impl TruthValue) -> impl BooleanTest {
-    IsTruthValue{lhs, rhs}
+    IsTruthValue { lhs, rhs }
 }
 
 #[inline]
 pub fn is_not_truth_value(lhs: impl BooleanPrimary, rhs: impl TruthValue) -> impl BooleanTest {
-    IsNotTruthValue{lhs, rhs}
+    IsNotTruthValue { lhs, rhs }
 }

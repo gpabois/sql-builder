@@ -1,14 +1,20 @@
-use crate::{grammar::{self, SearchCondition, WhereClause}, ToQuery};
+use crate::{
+    either::Either,
+    grammar::{self, SearchCondition, WhereClause},
+    ToQuery,
+};
 
 /// WHERE <search_condition>
 pub struct Where<SearchCond: grammar::SearchCondition> {
     search_cond: SearchCond,
 }
 
-impl<SearchCond> Where<SearchCond> where SearchCond: SearchCondition {
-    pub fn new(search_cond: SearchCond) -> Self 
-    {
-        Self {search_cond}
+impl<SearchCond> Where<SearchCond>
+where
+    SearchCond: SearchCondition,
+{
+    pub fn new(search_cond: SearchCond) -> Self {
+        Self { search_cond }
     }
 }
 
@@ -33,3 +39,10 @@ where
     }
 }
 
+impl<Lhs, Rhs> WhereClause for Either<Lhs, Rhs>
+where
+    Lhs: WhereClause,
+    Rhs: WhereClause,
+{
+    const IS_IMPL: bool = true;
+}

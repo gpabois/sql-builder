@@ -1,12 +1,29 @@
+use paste::paste;
 use phf::phf_map;
 use proc_macro::{self, TokenStream};
 use quote::quote;
+use regex::Regex;
 use syn::{parse_macro_input, DeriveInput, Ident};
-use paste::paste;
+
+#[proc_macro]
+pub fn id(input: TokenStream) -> TokenStream {
+    let ident: syn::Ident = parse_macro_input!(input);
+    let re = Regex::new("^[A-Za-z_]([A-Za-z0-9_])*").unwrap();
+    let str = ident.to_string();
+
+    if !re.is_match(&str) {
+        return quote! {
+            compile_error!(&format("{} not an identifier", &str));
+        }
+        .into();
+    }
+
+    quote! { ::sql_builder::id(#str) }.into()
+}
 
 macro_rules! impl_symbol_derivation {
     ($symbol:ident) => {
-        paste!{
+        paste! {
             #[proc_macro_derive($symbol)]
             pub fn [<derive_$symbol:snake>](input: TokenStream) -> TokenStream {
                 let input: DeriveInput = parse_macro_input!(input);
@@ -127,15 +144,15 @@ static SYMBOL_MAP: phf::Map<&'static str, SymbolFlags> = phf_map! {
     "Factor" => SymbolFlags{with_impl: false, inherits: &["Term"]},
     "NumericPrimary" => SymbolFlags{with_impl: false, inherits: &["Factor"]},
     "ValueExpressionPrimary" => SymbolFlags{
-        with_impl: false, 
+        with_impl: false,
         inherits: &["NumericPrimary"]
     },
     "ValueSpecification" => SymbolFlags{
-        with_impl: false, 
+        with_impl: false,
         inherits: &["ValueExpressionPrimary"]
     },
     "Literal" => SymbolFlags{
-        with_impl: false, 
+        with_impl: false,
         inherits: &["ValueSpecification"]
     },
     "SchemaName" => SymbolFlags{
@@ -219,11 +236,11 @@ static SYMBOL_MAP: phf::Map<&'static str, SymbolFlags> = phf_map! {
     "RowValueConstructor" => SymbolFlags {
         with_impl: false,
         inherits: &[]
-    }, 
+    },
     "RowValueConstructorList" => SymbolFlags {
         with_impl: false,
         inherits: &["RowValueConstructor"]
-    }, 
+    },
     "RowValueConstructorElement" => SymbolFlags {
         with_impl: false,
         inherits: &["RowValueConstructor", "RowValueConstructorList"]
@@ -279,4 +296,3 @@ fn impl_symbol_trait(
         }
     }
 }
-

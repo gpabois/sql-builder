@@ -28,7 +28,7 @@ impl ToQuery for Identifier {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        _ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
         write!(stream, "{}", self.0)
     }

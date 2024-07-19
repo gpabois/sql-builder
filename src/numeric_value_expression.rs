@@ -1,18 +1,20 @@
 use sql_builder_macros::NumericValueExpression;
 
-use crate::{grammar::{NumericValueExpression, Term}, ToQuery};
-
+use crate::{
+    grammar::{NumericValueExpression, Term},
+    ToQuery,
+};
 
 enum ArithmOpKind {
     Add,
-    Sub
+    Sub,
 }
 
 impl AsRef<str> for ArithmOpKind {
     fn as_ref(&self) -> &str {
         match self {
             ArithmOpKind::Add => "+",
-            ArithmOpKind::Sub =>  "-",
+            ArithmOpKind::Sub => "-",
         }
     }
 }
@@ -21,23 +23,27 @@ impl ToQuery for ArithmOpKind {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        _ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
         write!(stream, "{}", self.as_ref())
     }
 }
 
 #[derive(NumericValueExpression)]
-pub struct ArithmOperand<Lhs, Rhs> 
-where Lhs: NumericValueExpression, Rhs: Term
+pub struct ArithmOperand<Lhs, Rhs>
+where
+    Lhs: NumericValueExpression,
+    Rhs: Term,
 {
     lhs: Lhs,
     rhs: Rhs,
-    kind: ArithmOpKind
+    kind: ArithmOpKind,
 }
 
-impl<Lhs, Rhs> ToQuery for ArithmOperand<Lhs, Rhs> 
-where Lhs: NumericValueExpression, Rhs: Term
+impl<Lhs, Rhs> ToQuery for ArithmOperand<Lhs, Rhs>
+where
+    Lhs: NumericValueExpression,
+    Rhs: Term,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -53,17 +59,25 @@ where Lhs: NumericValueExpression, Rhs: Term
 }
 
 #[inline]
-pub fn add<Lhs, Rhs>(lhs: impl NumericValueExpression, rhs: impl Term) -> impl NumericValueExpression
-{
+pub fn add<Lhs, Rhs>(
+    lhs: impl NumericValueExpression,
+    rhs: impl Term,
+) -> impl NumericValueExpression {
     ArithmOperand {
-        lhs, rhs, kind: ArithmOpKind::Add
+        lhs,
+        rhs,
+        kind: ArithmOpKind::Add,
     }
 }
 
 #[inline]
-pub fn sub<Lhs, Rhs>(lhs: impl NumericValueExpression, rhs: impl Term) -> impl NumericValueExpression
-{
+pub fn sub<Lhs, Rhs>(
+    lhs: impl NumericValueExpression,
+    rhs: impl Term,
+) -> impl NumericValueExpression {
     ArithmOperand {
-        lhs, rhs, kind: ArithmOpKind::Sub
+        lhs,
+        rhs,
+        kind: ArithmOpKind::Sub,
     }
 }

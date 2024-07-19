@@ -3,9 +3,14 @@ use sql_builder_macros::BooleanPrimary;
 use crate::{grammar::SearchCondition, ToQuery};
 
 #[derive(BooleanPrimary)]
-pub struct NestedSearchCondition<SearchCond>(pub(crate) SearchCond) where SearchCond: SearchCondition;
+pub struct NestedSearchCondition<SearchCond>(pub(crate) SearchCond)
+where
+    SearchCond: SearchCondition;
 
-impl<SearchCond> ToQuery for NestedSearchCondition<SearchCond> where SearchCond: SearchCondition {
+impl<SearchCond> ToQuery for NestedSearchCondition<SearchCond>
+where
+    SearchCond: SearchCondition,
+{
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
@@ -16,3 +21,4 @@ impl<SearchCond> ToQuery for NestedSearchCondition<SearchCond> where SearchCond:
         write!(stream, ")")
     }
 }
+

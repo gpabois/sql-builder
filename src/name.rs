@@ -1,6 +1,6 @@
 use sql_builder_macros::{QualifiedName, SchemaName};
 
-use crate::{identifier::Identifier, grammar, ToQuery};
+use crate::{grammar, identifier::Identifier, ToQuery};
 
 #[derive(SchemaName)]
 pub struct SchemaName {
@@ -19,7 +19,6 @@ where
     schema_name: SchemaName,
     name: Identifier,
 }
-
 
 impl<SchemaName> ToQuery for QualifiedName<SchemaName>
 where

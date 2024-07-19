@@ -26,4 +26,3 @@ where
         self.alias.write(stream, ctx)
     }
 }
-
