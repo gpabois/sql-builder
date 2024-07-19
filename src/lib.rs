@@ -4,25 +4,30 @@ pub mod group_by;
 pub mod name;
 pub mod select;
 pub mod select_list;
+pub mod table_expression;
+pub mod table_reference_list;
 
 pub mod bind;
 pub mod identifier;
 pub mod term;
+pub mod numeric_value_expression;
 pub mod r#where;
+pub mod literal;
 
 pub mod derived_column;
 pub mod from;
 
+pub mod comparison_predicate;
 pub mod boolean_factor;
 pub mod boolean_term;
 pub mod boolean_test;
+pub mod boolean_primary;
 pub mod search_condition;
 
 use std::io::Write;
 
 #[derive(Default)]
 pub struct ToQueryContext {}
-
 pub trait ToQuery {
     fn to_string(&self) -> Result<String, Box<dyn std::error::Error>> {
         let mut bytes = Vec::<u8>::default();
@@ -31,6 +36,7 @@ pub trait ToQuery {
         let sql = String::from_utf8(bytes)?;
         Ok(sql)
     }
+    
     fn write<W: Write>(
         &self,
         stream: &mut W,
@@ -48,25 +54,59 @@ impl ToQuery for () {
     }
 }
 
-pub mod traits {
-    use crate::{
-        boolean_factor::Not,
-        boolean_test::{IsNotTruthValue, IsTruthValue},
-        ToQuery,
-    };
+pub use r#where::Where;
+pub use select::select;
+pub use search_condition::or;
+pub use boolean_term::and;
+pub use boolean_factor::not;
+pub use boolean_test::{is_not_truth_value, is_truth_value};
+pub use comparison_predicate::{eq, neq, lte, lt, gt, gte};
+pub use numeric_value_expression::{add, sub};
+pub use term::{mult, div};
+pub use identifier::id;
+pub use literal::lit;
 
-    pub trait QueryExpression {}
+pub mod grammar {
+    use crate::{boolean_factor::Not, boolean_primary::NestedSearchCondition, boolean_test::{IsNotTruthValue, IsTruthValue}, from::From, select_list::SelectLink, table_expression::{self, TableExpr}, table_reference_list::TableRefList, r#where::Where, ToQuery};
 
-    pub trait SelectStatement {}
+    pub trait Select: Sized + ToQuery {
+        /// SELECT DISTINCT [...]
+        fn distinct(self) -> impl Select;
+        
+        /// SELECT ALL [...]
+        fn all(self) -> impl Select;
 
-    impl<T> QueryExpression for T where T: SelectStatement {}
+        /// Append table references to the from clause
+        /// 
+        /// See [self::FromClause::add_table_references]
+        fn and_from(self, table_refs: impl TableReferenceList) -> impl Select;
+    }   
 
+    /// A table expression
+    /// 
+    /// # Grammar rule
+    /// <table expression> ::= <from clause>
+    /// [ <where clause> ]
+    /// [ <group by clause> ]
+    /// [ <having clause> ] 
+    pub trait TableExpression: ToQuery + Sized {      
+        /// Add the table references to the current from clause. 
+        fn and_from(self, table_refs: impl TableReferenceList) -> impl TableExpression;
+        
+        /// Replace the current WHERE clause with another one.
+        fn r#where(self, where_clause: impl SearchCondition) -> impl TableExpression;
+    }
+
+    /// A list of selected values.
+    /// 
+    /// # Grammar rule
+    /// <select list> ::= <asterisk> | (<derived column> | <qualifier> <period> <asterisk>)
     pub trait SelectList: Sized + ToQuery {
         const IS_IMPL: bool;
 
         /// Chain a new select expression
-        fn chain<T: SelectList>(self, next: T) -> crate::select_list::SelectList<Self, T> {
-            crate::select_list::SelectList(self, next)
+        fn append<T: SelectList>(self, next: T) -> SelectLink<Self, T> {
+            SelectLink(self, next)
         }
     }
 
@@ -74,12 +114,17 @@ pub mod traits {
         const IS_IMPL: bool = false;
     }
 
+    /// A derived column.
+    /// 
+    /// # Grammar rule
+    /// ```ebnf
     /// <derived column> ::= <value expression> [ <as clause> ]
+    /// ```
     ///
-    /// Inherits: [self::SelectList]
-    /// Inherited by: [self::ValueExpression]
+    /// Super: [self::SelectList]
+    /// Children: [self::ValueExpression]
     pub trait DerivedColumn: SelectList + Sized {
-        fn r#as<ColName: ColumnName>(
+        fn alias<ColName: ColumnName>(
             self,
             alias: ColName,
         ) -> crate::derived_column::DerivedColumn<Self, ColName>
@@ -93,6 +138,12 @@ pub mod traits {
         }
     }
 
+    /// A where clause
+    /// 
+    /// # SQL
+    /// ```sql
+    /// WHERE <search condition>
+    /// ```
     pub trait WhereClause: ToQuery {
         const IS_IMPL: bool;
     }
@@ -100,9 +151,48 @@ pub mod traits {
         const IS_IMPL: bool = false;
     }
 
-    pub trait FromClause: ToQuery {
-        const IS_IMPL: bool;
+    /// A from clause 
+    /// 
+    /// Super: [self::TableExpression]
+    /// 
+    /// # SQL
+    /// ```sql
+    /// FROM <table references>
+    /// ```
+    pub trait FromClause: TableExpression + ToQuery {
+        /// Append table references to the from clause
+        /// 
+        /// See [self::TableReferenceList]
+        fn add_table_references(self, tab_refs: impl TableReferenceList) -> impl FromClause;
     }
+
+    impl TableExpression for () {
+        fn r#where(self, search_cond: impl SearchCondition) -> impl TableExpression {
+            TableExpr {
+                from_clause: (),
+                where_clause: Where::new(search_cond),
+                group_by: (),
+                having: ()
+            }
+        }
+        
+        fn and_from(self, table_refs: impl TableReferenceList) -> impl TableExpression {
+            TableExpr {
+                from_clause: From::new(table_refs),
+                where_clause: (),
+                group_by: (),
+                having: ()
+            }
+        }
+    }
+
+    impl FromClause for () {
+        fn add_table_references(self, table_refs: impl TableReferenceList) -> impl FromClause 
+        {
+            From{ table_refs }
+        }
+    }
+    
     pub trait HavingClause {}
     impl HavingClause for () {}
 
@@ -120,53 +210,66 @@ pub mod traits {
 
     /// <qualifier> ::= <table name> | <correlation name>
     ///
-    /// Inherits:
+    /// Super:
     /// - [self::ColumnReference]
     /// - [self::SelectList]
-    /// Inherited by [self::TableName]
+    /// Children [self::TableName]
     pub trait Qualifier {}
 
     /// A qualified name <schema_name>. ? <identifier>
     ///
-    /// Inherits: [self::TableReference]
-    /// Inherited by : [self::QualifiedIdentifier]
+    /// Super: [self::TableReference]
+    /// Children : [self::QualifiedIdentifier]
     pub trait QualifiedName: ToQuery + TableReference {}
 
     /// <qualified identifier> ::= <identifier>
-    /// Inherits: [self::QualifiedName]
-    /// Inherited by: [self::Identifier]
+    /// Super: [self::QualifiedName]
+    /// Children: [self::Identifier]
     pub trait QualifiedIdentifier: QualifiedName + ToQuery {}
+
+    /// <table reference list> ::= <table reference> 
+    /// | <table reference list> <comma> <table reference>
+    pub trait TableReferenceList: ToQuery + Sized {
+        fn chain<Rhs: TableReferenceList>(self, rhs: Rhs) -> TableRefList<Self, Rhs> {
+            TableRefList {
+                lhs: self,
+                rhs
+            }
+        }
+    }
 
     /// <table reference>    ::=
     /// <table name> [ <correlation specification> ]
     /// | <derived table> <correlation specification>
     /// | <joined table>
     ///
-    /// Inherited by [self::TableName]
-    pub trait TableReference: ToQuery {}
+    /// Children [self::TableName]
+    /// Super: [self::TableReferenceList]
+    pub trait TableReference: TableReferenceList + ToQuery {}
 
     /// A table name
     /// <table name> ::= <qualified name> | <qualified local table name>
     ///
-    /// Inherited by [self::QualifiedName]
+    /// Children [self::QualifiedName]
     pub trait TableName: ToQuery + TableReference {}
 
     /// <column reference> ::= [ <qualifier> <period> ] <column name>
     ///
     /// See [crate::column_reference::QualifiedColumnName]
     ///
-    /// Inherits: [self::ValueExpressionPrimary]
+    /// Super: [self::ValueExpressionPrimary]
     pub trait ColumnReference: ToQuery + ValueExpressionPrimary {}
 
     /// A column name
     /// <column name> ::= <identifier>
     ///
-    /// Inherited by: [self::Identifier]
-    pub trait ColumnName: ToQuery {}
+    /// Super: [self::ColumnReference]
+    /// Children: [self::Identifier]
+    pub trait ColumnName: ColumnReference + ToQuery {}
 
     /// An identifier
     ///
-    /// Inherits:
+    /// Super:
     /// - [self::QualifiedIdentifier]
     /// - [self::ColumnName]
     pub trait Identifier: QualifiedIdentifier + ColumnName {}
@@ -177,13 +280,15 @@ pub mod traits {
     /// | <datetime value expression>
     /// | <interval value expression>
     ///
-    /// Inherits: [self::DerivedColumn]
-    /// Inherited by:
+    /// Super: 
+    /// - [self::DerivedColumn],
+    /// - [self::RowValueConstructorElement]
+    /// Children:
     /// - [self::NumericValueExpression],
     /// - [self::StringValueExpression],
     /// - [self::DateTimeValueExpression],
     /// - [self::IntervalValueExpression]
-    pub trait ValueExpression: DerivedColumn {}
+    pub trait ValueExpression: RowValueConstructorElement + DerivedColumn + ToQuery {}
 
     /// TODO!
     pub trait StringValueExpression: ValueExpression {}
@@ -198,30 +303,32 @@ pub mod traits {
     /// | <numeric value expression> <plus sign> <term>
     /// | <numeric value expression> <minus sign> <term>
     ///
-    /// Inherits: [self::ValueExpression]
-    /// Inherited by: [self::Term]
+    /// Super: [self::ValueExpression]
+    /// Children: [self::Term]
     pub trait NumericValueExpression: ValueExpression {}
 
     /// <term> ::= <factor>
     /// | <term> <asterisk> <factor>
     /// | <term> <solidus> <factor>   
     ///
-    /// Inherits: [self::NumericValueExpression]
-    /// Inherited by : [self::Factor]
+    /// Super: [self::NumericValueExpression]
+    /// Children : [self::Factor]
     pub trait Term: NumericValueExpression {}
 
     pub trait Factor: Term {}
 
     /// <numeric primary> ::= <value expression primary> | <numeric value function>
     ///
-    /// Inherits: [self::Factor]
+    /// Super: [self::Factor]
     pub trait NumericPrimary: Factor {}
 
     /// TODO!
     pub trait NumericValueFunction {}
 
-    /// <value expression primary>    ::=
-    /// <unsigned value specification>
+    /// The primary expression of a value
+    /// 
+    /// ```ebnf
+    /// <value expression primary> ::= <value specification>
     /// | <column reference>
     /// | <set function specification>
     /// | <scalar subquery>
@@ -229,36 +336,61 @@ pub mod traits {
     /// | <left paren> <value expression> <right paren>
     /// | <cast specification>
     /// | <bound value>
+    /// ```
     ///
-    /// Inherits: [self::NumericPrimary]
+    /// # Differences with ISO/IEC 9075:1992
+    /// 
+    /// *unsigned value specification* is replaced by *value specification*, and
+    /// *bound value* is injected to allow parameters bindings for sqlx
+    /// 
+    /// Super: [self::NumericPrimary]
+    /// 
     pub trait ValueExpressionPrimary: NumericPrimary {}
+
+    /// A specified value
+    /// Super: [self::ValueExpressionPrimary]
+    pub trait ValueSpecification: ValueExpressionPrimary + ToQuery {}
+
+    /// A literal
+    /// 
+    /// Super: [self::ValueSpecification]
+    pub trait Literal: ValueSpecification + ToQuery {}
 
     /// <search condition> ::= <boolean term>
     /// | <search condition> OR <boolean term>
     ///
-    /// Inherited by : [self::BooleanTerm]
-    pub trait SearchCondition: ToQuery {}
+    /// Children : [self::BooleanTerm]
+    pub trait SearchCondition: ToQuery + Sized {
 
-    /// <boolean term> ::= <boolean factor>
-    /// | <boolean term> AND <boolean factor>
+        /// Allows the search condition to be nested within another search condition.
+        fn nest(self) -> impl BooleanPrimary {
+            NestedSearchCondition(self)
+        }
+    }
+
+    /// A boolean term.
+    /// 
+    /// ```ebnf
+    /// <boolean term> ::= <boolean factor> | <boolean term> AND <boolean factor>
+    /// ```
     ///
-    /// Inherits: [self::SearchCondition]
-    /// Inherited by : [self::BooleanFactor]
+    /// Super: [self::SearchCondition]
+    /// Children : [self::BooleanFactor]
     pub trait BooleanTerm: SearchCondition + ToQuery {}
 
     /// <boolean factor> ::= [ NOT ] <boolean test>
     ///
-    /// Inherits: [self::BooleanTerm]
-    /// Inherited by: [self::BooleanTest]
+    /// Super: [self::BooleanTerm]
+    /// Children: [self::BooleanTest]
     pub trait BooleanFactor: BooleanTerm + ToQuery {}
 
     /// <boolean test> ::= <boolean primary> [ IS [ NOT ] <truth value> ]
     ///
     /// See : [crate::boolean_test::IsTruthValue, crate::boolean_test::IsNotTruthValue]
     ///
-    /// Inherits: [self::BooleanTerm]
-    /// Inherited by: [self::BooleanPrimary]
-    pub trait BooleanTest: BooleanTerm + Sized + ToQuery {
+    /// Super: [self::BooleanFactor]
+    /// Children: [self::BooleanPrimary]
+    pub trait BooleanTest: BooleanFactor + Sized + ToQuery {
         fn not(self) -> Not<Self> {
             crate::boolean_factor::Not(self)
         }
@@ -266,7 +398,7 @@ pub mod traits {
 
     /// <boolean primary> ::= <predicate> | <left paren> <search condition> <right paren>
     ///
-    /// Inherits: [self::BooleanTest]
+    /// Super: [self::BooleanTest]
     pub trait BooleanPrimary: BooleanTest + Sized + ToQuery {
         fn is<TruthVal: TruthValue>(self, truth_value: TruthVal) -> IsTruthValue<Self, TruthVal> {
             IsTruthValue {
@@ -286,18 +418,23 @@ pub mod traits {
         }
     }
 
-    /// <predicate> ::= <comparison predicate>
-    /// | <between predicate>
-    /// | <in predicate>
-    /// | <like predicate>
-    /// | <null predicate>
-    /// | <quantified comparison predicate>
-    /// | <exists predicate>
-    /// | <match predicate>
-    /// | <overlaps predicate>
-    ///
-    /// Inherits: [self::BooleanPrimary]
-    /// Inherited by :
+    /// A predicate
+    /// 
+    /// # Grammar rule
+    /// ```ebnf
+    /// (predicate) ::= (comparison predicate)
+    /// | (between predicate)
+    /// | (in predicate)
+    /// | (like predicate)
+    /// | (null predicate)
+    /// | (quantified comparison predicate)
+    /// | (exists predicate)
+    /// | (match predicate)
+    /// | (overlaps predicate)
+    ///```
+    /// Super: [self::BooleanPrimary]
+    /// 
+    /// Children:
     /// - [self::ComparisonPredicate],
     /// - [self::BetweenPredicate],
     /// - [self::InPredicate],
@@ -309,47 +446,81 @@ pub mod traits {
     /// - [self::OverlapsPredicate]
     pub trait Predicate: BooleanPrimary + ToQuery {}
 
+    /// A predicate based on values comparison.
+    /// 
+    /// # Grammar rule
+    /// ```ebnf
     /// <comparison predicate> ::= <row value constructor> <comp op> <row value constructor>
-    ///
-    /// Inherits: [self::Predicate]
+    /// ```
+    /// 
+    /// Super: [self::Predicate]
     pub trait ComparisonPredicate: Predicate + ToQuery {}
+
+    /// A predicate based on ranged values.
+    /// 
+    /// # Grammar rule
+    /// ```ebnf
     /// <between predicate> ::= <row value constructor> [ NOT ] BETWEEN <row value constructor> AND <row value constructor>
-    ///
-    /// Inherits: [self::Predicate]
+    /// ```
+    /// 
+    /// Super: [self::Predicate]
     pub trait BetweenPredicate: Predicate + ToQuery {}
+    
+    /// A predicate that returns true if a value is within in a set.
+    /// 
+    /// # Grammar rule
+    /// ```ebnf
     /// <in predicate> ::= <row value constructor> [ NOT ] IN <in predicate value>
-    ///
-    /// Inherits: [self::Predicate]
+    /// ```
+    /// Super: [self::Predicate]
     pub trait InPredicate: Predicate + ToQuery {}
+
     /// <like predicate> ::= <match value> [ NOT ] LIKE <pattern> [ ESCAPE <escape character> ]
     ///
-    /// Inherits: [self::Predicate]
+    /// Super: [self::Predicate]
     pub trait LikePredicate: Predicate + ToQuery {}
 
     /// <null predicate> ::= <row value constructor> IS [ NOT ] NULL
     ///
-    /// Inherits: [self::Predicate]
+    /// Super: [self::Predicate]
     pub trait NullPredicate: Predicate + ToQuery {}
 
     /// <quantified comparison predicate> ::= <row value constructor> <comp op> <quantifier> <table subquery>
     ///
-    /// Inherits: [self::Predicate]
+    /// Super: [self::Predicate]
     pub trait QuantifiedComparisonPredicate: Predicate + ToQuery {}
 
     /// <exists predicate> ::= EXISTS <table subquery>
     ///
-    /// Inherits: [self::Predicate]
+    /// Super: [self::Predicate]
     pub trait ExistsPredicate: Predicate + ToQuery {}
     /// <match predicate> ::= <row value constructor> MATCH [ UNIQUE ] [ PARTIAL | FULL ] <table subquery>
     ///
-    /// Inherits: [self::Predicate]
+    /// Super: [self::Predicate]
     pub trait MatchPredicate: Predicate + ToQuery {}
 
     /// <overlaps predicate> ::= <row value constructor 1> OVERLAPS <row value constructor 2>
     ///
-    /// Inherits: [self::Predicate]
+    /// Super: [self::Predicate]
     pub trait OverlapsPredicate: Predicate + ToQuery {}
 
     /// <truth value> ::= TRUE | FALSE | UNKNOWN
-    pub trait TruthValue {}
+    pub trait TruthValue : ToQuery {}
+
+    pub trait RowValueConstructor: ToQuery {}
+
+    /// A comma-separated list of [self::RowValueElement]
+    /// 
+    /// Super: 
+    /// - [self::RowValueConstructor]
+    pub trait RowValueConstructorList: RowValueConstructor + ToQuery {}
+
+    ///
+    /// 
+    /// Super: 
+    /// - [self::RowValueConstructor]
+    /// - [self::RowValueConstructorList]
+    /// Children:
+    /// - [self::ValueExpression]
+    pub trait RowValueConstructorElement: RowValueConstructor + RowValueConstructorList + ToQuery {}
 }

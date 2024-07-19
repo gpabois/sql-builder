@@ -1,4 +1,4 @@
-use crate::traits;
+use crate::grammar;
 use sqlx::{Database, Encode};
 use std::marker::PhantomData;
 

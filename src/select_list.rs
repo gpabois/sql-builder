@@ -1,18 +1,18 @@
-use crate::{traits, ToQuery};
+use crate::{grammar, ToQuery};
 use sql_builder_macros::SelectList;
 
 /// A list of select expressions.
 /// Work recursively.
 #[derive(SelectList)]
-pub struct SelectList<S1, S2>(pub S1, pub S2)
+pub struct SelectLink<S1, S2>(pub S1, pub S2)
 where
-    S1: traits::SelectList,
-    S2: traits::SelectList;
+    S1: grammar::SelectList,
+    S2: grammar::SelectList;
 
-impl<S1, S2> ToQuery for SelectList<S1, S2>
+impl<S1, S2> ToQuery for SelectLink<S1, S2>
 where
-    S1: traits::SelectList,
-    S2: traits::SelectList,
+    S1: grammar::SelectList,
+    S2: grammar::SelectList,
 {
     fn write<W: std::io::Write>(
         &self,

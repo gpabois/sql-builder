@@ -1,6 +1,6 @@
-use crate::traits;
+use crate::grammar;
 
 pub struct GroupByClause();
 
-impl traits::GroupByClause for GroupByClause {}
+impl grammar::GroupByClause for GroupByClause {}
 

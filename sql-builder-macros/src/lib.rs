@@ -1,63 +1,78 @@
-use std::default;
-
 use phf::phf_map;
 use proc_macro::{self, TokenStream};
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput, Ident};
+use paste::paste;
 
-#[proc_macro_derive(DerivedColumn)]
-pub fn derive_derived_column(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
-    derive_symbol("DerivedColumn", &input).into()
+macro_rules! impl_symbol_derivation {
+    ($symbol:ident) => {
+        paste!{
+            #[proc_macro_derive($symbol)]
+            pub fn [<derive_$symbol:snake>](input: TokenStream) -> TokenStream {
+                let input: DeriveInput = parse_macro_input!(input);
+                derive_symbol(stringify!{$symbol}, &input).into()
+            }
+        }
+    };
 }
 
-#[proc_macro_derive(SelectList)]
-pub fn derive_select_list(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
-    derive_symbol("SelectList", &input).into()
-}
+impl_symbol_derivation!(Select);
+impl_symbol_derivation!(TableExpression);
+impl_symbol_derivation!(TableReferenceList);
 
-#[proc_macro_derive(Identifier)]
-pub fn derive_identifier(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
-    derive_symbol("Identifier", &input).into()
-}
+impl_symbol_derivation!(FromClause);
+impl_symbol_derivation!(WhereClause);
+impl_symbol_derivation!(GroupByClause);
+impl_symbol_derivation!(HavingClause);
 
-#[proc_macro_derive(SearchCondition)]
-pub fn derive_search_condition(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
-    derive_symbol("SearchCondition", &input).into()
-}
+impl_symbol_derivation!(DerivedColumn);
+impl_symbol_derivation!(SelectList);
 
-#[proc_macro_derive(BooleanTerm)]
-pub fn derive_boolean_term(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
-    derive_symbol("BooleanTerm", &input).into()
-}
+impl_symbol_derivation!(SearchCondition);
+impl_symbol_derivation!(BooleanTerm);
+impl_symbol_derivation!(BooleanFactor);
+impl_symbol_derivation!(BooleanTest);
+impl_symbol_derivation!(BooleanPrimary);
+impl_symbol_derivation!(ComparisonPredicate);
 
-#[proc_macro_derive(BooleanFactor)]
-pub fn derive_boolean_factor(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
-    derive_symbol("BooleanFactor", &input).into()
-}
+impl_symbol_derivation!(NumericValueExpression);
+impl_symbol_derivation!(Term);
+impl_symbol_derivation!(Factor);
 
-#[proc_macro_derive(BooleanTest)]
-pub fn derive_boolean_test(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
-    derive_symbol("BooleanTest", &input).into()
-}
+impl_symbol_derivation!(SchemaName);
+impl_symbol_derivation!(QualifiedName);
+impl_symbol_derivation!(QualifiedIdentifier);
+impl_symbol_derivation!(Identifier);
 
-#[proc_macro_derive(BooleanPrimary)]
-pub fn derive_boolean_primary(input: TokenStream) -> TokenStream {
-    let input: DeriveInput = parse_macro_input!(input);
-    derive_symbol("BooleanPrimary", &input).into()
-}
+impl_symbol_derivation!(Literal);
+
 struct SymbolFlags {
     with_impl: bool,
     inherits: &'static [&'static str],
 }
 
+/// Defines the way how symbols are derived.
 static SYMBOL_MAP: phf::Map<&'static str, SymbolFlags> = phf_map! {
+    "TableExpression" => SymbolFlags {
+        with_impl: false,
+        inherits: &[]
+    },
+    "FromClause" => SymbolFlags {
+        with_impl: false,
+        inherits: &[]
+    },
+    "WhereClause" => SymbolFlags {
+        with_impl: true,
+        inherits: &[]
+    },
+    "GroupByClause" => SymbolFlags {
+        with_impl: true,
+        inherits: &[]
+    },
+    "HavingClause" => SymbolFlags {
+        with_impl: true,
+        inherits: &[]
+    },
     "SelectList" => SymbolFlags {
         with_impl: true,
         inherits: &[]
@@ -74,9 +89,13 @@ static SYMBOL_MAP: phf::Map<&'static str, SymbolFlags> = phf_map! {
         with_impl: false,
         inherits: &["ColumnReference"]
     },
-    "TableReference" => SymbolFlags {
+    "TableReferenceList" => SymbolFlags {
         with_impl: false,
         inherits: &[]
+    },
+    "TableReference" => SymbolFlags {
+        with_impl: false,
+        inherits: &["TableReferenceList"]
     },
     "TableName" => SymbolFlags {
         with_impl: false,
@@ -88,7 +107,7 @@ static SYMBOL_MAP: phf::Map<&'static str, SymbolFlags> = phf_map! {
     },
     "ValueExpression" => SymbolFlags{
         with_impl: false,
-        inherits: &["DerivedColumn"]
+        inherits: &["DerivedColumn", "RowValueConstructorElement"]
     },
     "NumericValueExpression" => SymbolFlags{
         with_impl: false,
@@ -107,8 +126,22 @@ static SYMBOL_MAP: phf::Map<&'static str, SymbolFlags> = phf_map! {
     "Term" => SymbolFlags{with_impl: false, inherits: &["NumericValueExpression"]},
     "Factor" => SymbolFlags{with_impl: false, inherits: &["Term"]},
     "NumericPrimary" => SymbolFlags{with_impl: false, inherits: &["Factor"]},
-    "ValueExpressionPrimary" => SymbolFlags{with_impl: false, inherits: &["NumericPrimary"]},
-
+    "ValueExpressionPrimary" => SymbolFlags{
+        with_impl: false, 
+        inherits: &["NumericPrimary"]
+    },
+    "ValueSpecification" => SymbolFlags{
+        with_impl: false, 
+        inherits: &["ValueExpressionPrimary"]
+    },
+    "Literal" => SymbolFlags{
+        with_impl: false, 
+        inherits: &["ValueSpecification"]
+    },
+    "SchemaName" => SymbolFlags{
+        with_impl: false,
+        inherits: &[]
+    },
     "QualifiedName" => SymbolFlags{
         with_impl: false,
         inherits: &["TableName"]
@@ -142,7 +175,7 @@ static SYMBOL_MAP: phf::Map<&'static str, SymbolFlags> = phf_map! {
     },
     "BooleanPrimary" => SymbolFlags {
         with_impl: false,
-        inherits: &["BooleanTest", "SearchCondition"]
+        inherits: &["BooleanTest"]
     },
 
     "Predicate" => SymbolFlags {
@@ -182,6 +215,20 @@ static SYMBOL_MAP: phf::Map<&'static str, SymbolFlags> = phf_map! {
         with_impl: false,
         inherits: &["Predicate"]
     },
+
+    "RowValueConstructor" => SymbolFlags {
+        with_impl: false,
+        inherits: &[]
+    }, 
+    "RowValueConstructorList" => SymbolFlags {
+        with_impl: false,
+        inherits: &["RowValueConstructor"]
+    }, 
+    "RowValueConstructorElement" => SymbolFlags {
+        with_impl: false,
+        inherits: &["RowValueConstructor", "RowValueConstructorList"]
+    },
+
 };
 
 fn fetch_impl(symbol: &str) -> Vec<&str> {
@@ -227,7 +274,7 @@ fn impl_symbol_trait(
 
     let trait_ident = Ident::new(symbol, proc_macro2::Span::call_site());
     quote! {
-        impl #impl_generics crate::traits:: #trait_ident for #name #type_generics #where_clause {
+        impl #impl_generics crate::grammar:: #trait_ident for #name #type_generics #where_clause {
             #with_impl
         }
     }
