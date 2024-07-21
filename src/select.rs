@@ -1,7 +1,7 @@
 use sql_builder_macros::SelectList;
 
 use crate::{
-    from::From,
+    from_clause::From,
     grammar::{self, SelectList, TableExpression, TableReferenceList},
     ToQuery,
 };

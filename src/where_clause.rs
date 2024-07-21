@@ -1,9 +1,12 @@
+use sql_builder_macros::WhereClause;
+
 use crate::{
     either::Either,
     grammar::{self, SearchCondition, WhereClause},
-    ToQuery,
+    Blank, ToQuery,
 };
 
+#[derive(WhereClause)]
 /// WHERE <search_condition>
 pub struct Where<SearchCond: grammar::SearchCondition> {
     search_cond: SearchCond,
@@ -18,13 +21,6 @@ where
     }
 }
 
-impl<SearchCond> WhereClause for Where<SearchCond>
-where
-    SearchCond: SearchCondition,
-{
-    const IS_IMPL: bool = true;
-}
-
 impl<SearchCond> ToQuery for Where<SearchCond>
 where
     SearchCond: grammar::SearchCondition,
@@ -37,6 +33,10 @@ where
         write!(stream, "WHERE ")?;
         self.search_cond.write(stream, ctx)
     }
+}
+
+impl WhereClause for Blank {
+    const IS_IMPL: bool = false;
 }
 
 impl<Lhs, Rhs> WhereClause for Either<Lhs, Rhs>

@@ -1,4 +1,7 @@
-use crate::{grammar, ToQuery};
+use crate::{
+    grammar::{self, SelectList},
+    Blank, ToQuery,
+};
 use sql_builder_macros::SelectList;
 
 /// A list of select expressions.
@@ -23,4 +26,8 @@ where
         write!(stream, ", ")?;
         self.1.write(stream, ctx)
     }
+}
+
+impl SelectList for Blank {
+    const IS_IMPL: bool = false;
 }

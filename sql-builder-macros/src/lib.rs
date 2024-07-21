@@ -1,6 +1,7 @@
 use paste::paste;
 use phf::phf_map;
 use proc_macro::{self, TokenStream};
+use proc_macro2::Span;
 use quote::quote;
 use regex::Regex;
 use syn::{parse_macro_input, DeriveInput, Ident};
@@ -19,6 +20,39 @@ pub fn id(input: TokenStream) -> TokenStream {
     }
 
     quote! { ::sql_builder::id(#str) }.into()
+}
+
+#[proc_macro]
+pub fn create_symbol_traits(_: TokenStream) -> TokenStream {
+    SYMBOL_MAP
+        .entries()
+        .map(|(symbol, flags)| {
+            let mut deps = fetch_deps(symbol)
+                .into_iter()
+                .map(|dep| syn::Ident::new(dep, Span::call_site()))
+                .fold(quote! {crate::ToQuery}, |acc, dep| quote! { #acc + #dep });
+
+            let trait_id = syn::Ident::new(symbol, Span::call_site());
+
+            if flags.with_helpers {
+                deps = quote! {#deps + crate::helpers::#trait_id}
+            }
+
+            let body = if flags.with_blank_impl {
+                quote! {const IS_IMPL: bool;}
+            } else {
+                quote! {}
+            };
+
+            quote! {
+                /// Symbol #symbol
+                pub trait #trait_id: #deps {
+                    #body
+                }
+            }
+        })
+        .collect::<proc_macro2::TokenStream>()
+        .into()
 }
 
 macro_rules! impl_symbol_derivation {
@@ -42,6 +76,8 @@ impl_symbol_derivation!(WhereClause);
 impl_symbol_derivation!(GroupByClause);
 impl_symbol_derivation!(HavingClause);
 
+impl_symbol_derivation!(FromDefault);
+
 impl_symbol_derivation!(DerivedColumn);
 impl_symbol_derivation!(SelectList);
 
@@ -52,203 +88,296 @@ impl_symbol_derivation!(BooleanTest);
 impl_symbol_derivation!(BooleanPrimary);
 impl_symbol_derivation!(ComparisonPredicate);
 
+impl_symbol_derivation!(ContextuallyTypedRowValueExpressionList);
+impl_symbol_derivation!(ContextuallyTypedRowValueConstructorElementList);
+
 impl_symbol_derivation!(NumericValueExpression);
 impl_symbol_derivation!(Term);
 impl_symbol_derivation!(Factor);
 
 impl_symbol_derivation!(SchemaName);
+impl_symbol_derivation!(UnqualifiedSchemaName);
+
 impl_symbol_derivation!(QualifiedName);
+
 impl_symbol_derivation!(QualifiedIdentifier);
 impl_symbol_derivation!(Identifier);
 
 impl_symbol_derivation!(Literal);
 
 struct SymbolFlags {
-    with_impl: bool,
-    inherits: &'static [&'static str],
+    with_helpers: bool,
+    with_blank_impl: bool,
+    deps: &'static [&'static str],
+}
+
+impl SymbolFlags {
+    #[inline]
+    pub const fn new(
+        deps: &'static [&'static str],
+        with_blank_impl: bool,
+        with_helpers: bool,
+    ) -> Self {
+        Self {
+            with_helpers,
+            with_blank_impl,
+            deps,
+        }
+    }
+
+    pub const fn new_with_impl(deps: &'static [&'static str]) -> Self {
+        Self {
+            with_blank_impl: true,
+            with_helpers: false,
+            deps,
+        }
+    }
 }
 
 /// Defines the way how symbols are derived.
 static SYMBOL_MAP: phf::Map<&'static str, SymbolFlags> = phf_map! {
-    "TableExpression" => SymbolFlags {
-        with_impl: false,
-        inherits: &[]
-    },
-    "FromClause" => SymbolFlags {
-        with_impl: false,
-        inherits: &[]
-    },
-    "WhereClause" => SymbolFlags {
-        with_impl: true,
-        inherits: &[]
-    },
-    "GroupByClause" => SymbolFlags {
-        with_impl: true,
-        inherits: &[]
-    },
-    "HavingClause" => SymbolFlags {
-        with_impl: true,
-        inherits: &[]
-    },
-    "SelectList" => SymbolFlags {
-        with_impl: true,
-        inherits: &[]
-    },
-    "DerivedColumn" => SymbolFlags{
-        with_impl: false,
-        inherits: &["SelectList"]
-    },
+    "Asterisk" => SymbolFlags::new(&[], false, false),
+    "QualifiedAsterisk" => SymbolFlags::new(&[], false, false),
+
+    "Select" => SymbolFlags::new(&[], false, true),
+    "TableExpression" => SymbolFlags::new(&[], false, true),
+    "FromClause" => SymbolFlags::new(&[], false, true),
+    "WhereClause" => SymbolFlags::new_with_impl(&[]),
+    "GroupByClause" => SymbolFlags::new_with_impl(&[]),
+    "HavingClause" => SymbolFlags::new_with_impl(&[]),
+    "SelectList" => SymbolFlags::new_with_impl(&["SelectSublist", "Asterisk"]),
+    "SelectSublist" => SymbolFlags::new_with_impl(&["DerivedColumn", "QualifiedAsterisk"]),
+    "DerivedColumn" => SymbolFlags::new(&["ValueExpression"]),
+
+    "ValueExpression" => SymbolFlags::new(&["CommonValueExpression", "BooleanValueExpression", "RowValueExpression"]),
+    "CommonValueExpression" => SymbolFlags::new(&[
+        "NumericValueExpression",
+        "StringValueExpression",
+        "DatetimeValueExpression",
+        "IntervalValueExpression",
+        "UserDefinedTypeValueExpression",
+        "ReferenceValueExpression",
+        "CollectionValueExpression"
+    ]),
+    "NumericValueExpression" => SymbolFlags::new(&["Term"]),
+    "StringValueExpression" => SymbolFlags::new(&[]),
+    "DatetimeValueExpression" => SymbolFlags::new(&[]),
+    "IntervalValueExpression" => SymbolFlags::new(&[]),
+    "UserDefinedTypeValueExpression" => SymbolFlags::new(&[]),
+    "ReferenceValueExpression" => SymbolFlags::new(&[]),
+    "CollectionValueExpression" => SymbolFlags::new(&[]),
+
+    "Term" => SymbolFlags::new(&["NumericValueExpression"]),
+    "Factor" => SymbolFlags::new(&["NumericPrimary"]),
+    "NumericPrimary" => SymbolFlags::new(&["ValueExpressionPrimary", "NumericValueFunction"]),
+    "ValueExpressionPrimary" => SymbolFlags::new(&["ParenthesizedValueExpression", "NonParenthesizedValueExpressionPrimary"]),
+    // Need to call to_parenthesized_value_expression on ValueExpression
+    "ParenthesizedValueExpression" => SymbolFlags::new(&[]),
+    "NonParenthesizedValueExpressionPrimary" => SymbolFlags::new(&[
+        "UnsignedValueSpecification",
+        "ColumnReference",
+        "SetFunctionReference",
+        "WindowFunction",
+        "ScalarSubquery",
+        "CaseExpression",
+        "CastSpecification",
+        "FieldReference",
+        "SubtypeTreatment",
+        "MethodInvocation",
+        "StaticMethodInvocation",
+        "NewSpecification",
+        "AttributeOrMethodReference",
+        "ReferenceResolution",
+        "CollectionValueConstructor",
+        "ArrayElementReference",
+        "MultisetElementReference",
+        "RoutineInvocation",
+        "NextValueExpression"
+    ]),
+
     "ColumnReference" => SymbolFlags {
-        with_impl: false,
-        inherits: &["ValueExpressionPrimary"]
+        with_blank_impl: false,
+        deps: &["ValueExpressionPrimary"]
     },
     "ColumnName" => SymbolFlags{
-        with_impl: false,
-        inherits: &["ColumnReference"]
+        with_blank_impl: false,
+        deps: &["ColumnReference"]
     },
     "TableReferenceList" => SymbolFlags {
-        with_impl: false,
-        inherits: &[]
+        with_blank_impl: false,
+        deps: &[]
     },
     "TableReference" => SymbolFlags {
-        with_impl: false,
-        inherits: &["TableReferenceList"]
+        with_blank_impl: false,
+        deps: &["TableReferenceList"]
     },
     "TableName" => SymbolFlags {
-        with_impl: false,
-        inherits: &["TableReference", "Qualifier"],
+        with_blank_impl: false,
+        deps: &["TableReference", "Qualifier", "InsertionTarget"],
     },
     "Qualifier" => SymbolFlags {
-        with_impl: false,
-        inherits: &["ColumnReference", "SelectList"]
+        with_blank_impl: false,
+        deps: &["ColumnReference", "SelectList"]
     },
-    "ValueExpression" => SymbolFlags{
-        with_impl: false,
-        inherits: &["DerivedColumn", "RowValueConstructorElement"]
+    "Insert" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &[]
     },
-    "NumericValueExpression" => SymbolFlags{
-        with_impl: false,
-        inherits: &["ValueExpression"]
+    "InsertionTarget" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &[]
     },
-    "StringValueExpression" => SymbolFlags{
-        with_impl: false,
-        inherits: &["ValueExpression"]
+    "InsertColumnsAndSources" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &[]
     },
-    "DateTimeValueExpression" => SymbolFlags{
-        with_impl: false,
-        inherits: &["ValueExpression"]
+    "FromSubQuery" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &["InsertColumnsAndSources"]
     },
-    "IntervalValueExpression" => SymbolFlags{with_impl: false, inherits: &["ValueExpression"]},
-
-    "Term" => SymbolFlags{with_impl: false, inherits: &["NumericValueExpression"]},
-    "Factor" => SymbolFlags{with_impl: false, inherits: &["Term"]},
-    "NumericPrimary" => SymbolFlags{with_impl: false, inherits: &["Factor"]},
-    "ValueExpressionPrimary" => SymbolFlags{
-        with_impl: false,
-        inherits: &["NumericPrimary"]
+    "FromConstructor" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &["InsertColumnsAndSources"]
     },
-    "ValueSpecification" => SymbolFlags{
-        with_impl: false,
-        inherits: &["ValueExpressionPrimary"]
+    "FromDefault" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &["InsertColumnsAndSources"]
+    },
+    "ContextuallyTypedTableValueConstructor" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &["FromConstructor"]
+    },
+    "ContextuallyTypedRowValueExpressionList" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &[]
+    },
+    "ContextuallyTypedRowValueExpression" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &["ContextuallyTypedRowValueExpressionList"]
+    },
+    "ContextuallyTypedRowValueConstructor" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &["ContextuallyTypedRowValueExpression"]
+    },
+    "ContextuallyTypedRowValueConstructorElementList" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &[
+            "ContextuallyTypedRowValueConstructor"
+        ]
+    },
+    "ContextuallyTypedRowValueConstructorElement" => SymbolFlags {
+        with_blank_impl: false,
+        deps: &[
+            "ContextuallyTypedRowValueConstructor",
+            "ContextuallyTypedRowValueConstructorElementList"
+        ]
+    },
+       "ValueSpecification" => SymbolFlags{
+        with_blank_impl: false,
+        deps: &["ValueExpressionPrimary"]
     },
     "Literal" => SymbolFlags{
-        with_impl: false,
-        inherits: &["ValueSpecification"]
+        with_blank_impl: false,
+        deps: &["ValueSpecification"]
     },
     "SchemaName" => SymbolFlags{
-        with_impl: false,
-        inherits: &[]
+        with_blank_impl: false,
+        deps: &[]
+    },
+    "UnqualifiedSchemaName" => SymbolFlags{
+        with_blank_impl: false,
+        deps: &["SchemaName"]
     },
     "QualifiedName" => SymbolFlags{
-        with_impl: false,
-        inherits: &["TableName"]
+        with_blank_impl: false,
+        deps: &["TableName"]
     },
     "QualifiedIdentifier" => SymbolFlags{
-        with_impl: false,
-        inherits: &["QualifiedName"]
+        with_blank_impl: false,
+        deps: &["QualifiedName"]
     },
     "Identifier" => SymbolFlags{
-        with_impl: false,
-        inherits: &[
+        with_blank_impl: false,
+        deps: &[
             "QualifiedIdentifier",
             "ColumnName"
         ]
     },
     "SearchCondition" => SymbolFlags {
-        with_impl: false,
-        inherits: &[]
+        with_blank_impl: false,
+        deps: &[]
     },
     "BooleanTerm" => SymbolFlags {
-        with_impl: false,
-        inherits: &["SearchCondition"]
+        with_blank_impl: false,
+        deps: &["SearchCondition"]
     },
     "BooleanFactor" => SymbolFlags {
-        with_impl: false,
-        inherits: &["BooleanTerm"]
+        with_blank_impl: false,
+        deps: &["BooleanTerm"]
     },
     "BooleanTest" => SymbolFlags {
-        with_impl: false,
-        inherits: &["BooleanFactor"]
+        with_blank_impl: false,
+        deps: &["BooleanFactor"]
     },
     "BooleanPrimary" => SymbolFlags {
-        with_impl: false,
-        inherits: &["BooleanTest"]
+        with_blank_impl: false,
+        deps: &["BooleanTest"]
     },
 
     "Predicate" => SymbolFlags {
-        with_impl: false,
-        inherits: &["BooleanPrimary"]
+        with_blank_impl: false,
+        deps: &["BooleanPrimary"]
     },
 
     "ComparisonPredicate" => SymbolFlags {
-        with_impl: false,
-        inherits: &["Predicate"]
+        with_blank_impl: false,
+        deps: &["Predicate"]
     },
     "BetweenPredicate" => SymbolFlags {
-        with_impl: false,
-        inherits: &["Predicate"]
+        with_blank_impl: false,
+        deps: &["Predicate"]
     },
     "InPredicate" => SymbolFlags {
-        with_impl: false,
-        inherits: &["Predicate"]
+        with_blank_impl: false,
+        deps: &["Predicate"]
     },
     "LikePredicate" => SymbolFlags {
-        with_impl: false,
-        inherits: &["Predicate"]
+        with_blank_impl: false,
+        deps: &["Predicate"]
     },
     "NullPredicate" => SymbolFlags {
-        with_impl: false,
-        inherits: &["Predicate"]
+        with_blank_impl: false,
+        deps: &["Predicate"]
     },
     "ExistsPredicate" => SymbolFlags {
-        with_impl: false,
-        inherits: &["Predicate"]
+        with_blank_impl: false,
+        deps: &["Predicate"]
     },
     "MatchPredicate" => SymbolFlags {
-        with_impl: false,
-        inherits: &["Predicate"]
+        with_blank_impl: false,
+        deps: &["Predicate"]
     },
     "OverlapsPredicate" => SymbolFlags {
-        with_impl: false,
-        inherits: &["Predicate"]
+        with_blank_impl: false,
+        deps: &["Predicate"]
     },
 
     "RowValueConstructor" => SymbolFlags {
-        with_impl: false,
-        inherits: &[]
+        with_blank_impl: false,
+        deps: &[]
     },
     "RowValueConstructorList" => SymbolFlags {
-        with_impl: false,
-        inherits: &["RowValueConstructor"]
+        with_blank_impl: false,
+        deps: &["RowValueConstructor"]
     },
     "RowValueConstructorElement" => SymbolFlags {
-        with_impl: false,
-        inherits: &["RowValueConstructor", "RowValueConstructorList"]
+        with_blank_impl: false,
+        deps: &["RowValueConstructor", "RowValueConstructorList"]
     },
 
 };
 
-fn fetch_impl(symbol: &str) -> Vec<&str> {
+fn fetch_deps(symbol: &str) -> Vec<&str> {
     let mut stack = vec![symbol];
     let mut symbols = Vec::<&'static str>::default();
     while let Some(symbol) = stack.pop() {
@@ -256,21 +385,27 @@ fn fetch_impl(symbol: &str) -> Vec<&str> {
             continue;
         }
         symbols.push(symbol);
-        stack.extend(SYMBOL_MAP[symbol].inherits);
+
+        stack.extend(SYMBOL_MAP.keys().find(move |key| {
+            let flags = &SYMBOL_MAP[**key];
+            flags.deps.contains(&symbol)
+        }));
     }
     symbols
 }
 
 fn derive_symbol(symbol: &str, ast: &DeriveInput) -> proc_macro2::TokenStream {
-    fetch_impl(symbol)
+    fetch_deps(symbol)
         .iter()
+        .map(|symbol| format!("crate::grammar::{}", symbol))
+        .chain([format!("crate::helpers::{}", symbol)])
         .map(|symbol| {
             impl_symbol_trait(
-                symbol,
+                &symbol,
                 ast,
                 SYMBOL_MAP
-                    .get(symbol)
-                    .expect(&format!("missing symbol {symbol} in the map")),
+                    .get(&symbol)
+                    .unwrap_or_else(|| panic!("missing symbol {symbol} in the map")),
             )
         })
         .collect()
@@ -284,7 +419,7 @@ fn impl_symbol_trait(
     let (impl_generics, type_generics, where_clause) = ast.generics.split_for_impl();
     let name = &ast.ident;
 
-    let with_impl = match flags.with_impl {
+    let with_impl = match flags.with_blank_impl {
         true => quote! {const IS_IMPL: bool = true;},
         false => quote! {},
     };

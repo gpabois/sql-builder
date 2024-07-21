@@ -12,18 +12,24 @@ pub mod identifier;
 pub mod literal;
 pub mod numeric_value_expression;
 pub mod term;
-pub mod r#where;
+pub mod where_clause;
 
 pub mod derived_column;
-pub mod from;
+pub mod from_clause;
 
 pub mod boolean_factor;
 pub mod boolean_primary;
 pub mod boolean_term;
 pub mod boolean_test;
 pub mod comparison_predicate;
+pub mod contextually_typed_row_value_constructor_element_list;
+pub mod contextually_typed_row_value_expression_list;
 pub mod either;
+pub mod having;
+pub mod insert;
+pub mod schema_name;
 pub mod search_condition;
+pub mod unqualified_schema_name;
 
 use std::io::Write;
 
@@ -62,22 +68,46 @@ pub use comparison_predicate::{eq, gt, gte, lt, lte, neq};
 pub use identifier::id;
 pub use literal::lit;
 pub use numeric_value_expression::{add, sub};
-pub use r#where::Where;
 pub use search_condition::or;
 pub use select::select;
 pub use term::{div, mult};
+pub use where_clause::Where;
 
 pub use sql_builder_macros::id;
 
+#[derive(Default)]
+/// Blank type for default symbol trait implementation.
+pub struct Blank();
+
+impl ToQuery for Blank {
+    fn write<W: Write>(
+        &self,
+        _stream: &mut W,
+        _ctx: &mut ToQueryContext,
+    ) -> Result<(), std::io::Error> {
+        Ok(())
+    }
+}
+
+pub mod helpers {
+    use crate::grammar as G;
+}
+
+pub mod grammar {
+    use sql_builder_macros::create_symbol_traits;
+
+    create_symbol_traits! {}
+}
+
+/*
 pub mod grammar {
     use crate::{
         boolean_factor::Not,
         boolean_primary::NestedSearchCondition,
         boolean_test::{IsNotTruthValue, IsTruthValue},
+        contextually_typed_row_value_expression_list::ContextuallyTypedRowExpressionLink,
         either::Either,
-        from::From,
         select_list::SelectLink,
-        table_expression::TableExpr,
         table_reference_list::TableRefList,
         ToQuery,
     };
@@ -178,10 +208,6 @@ pub mod grammar {
         }
     }
 
-    impl SelectList for () {
-        const IS_IMPL: bool = false;
-    }
-
     /// A derived column.
     ///
     /// # Grammar rule
@@ -215,9 +241,6 @@ pub mod grammar {
     pub trait WhereClause: ToQuery {
         const IS_IMPL: bool;
     }
-    impl WhereClause for () {
-        const IS_IMPL: bool = false;
-    }
 
     /// A from clause
     ///
@@ -234,67 +257,180 @@ pub mod grammar {
         fn add_table_references(self, tab_refs: impl TableReferenceList) -> impl FromClause;
     }
 
-    impl TableExpression for () {
-        type FromClause = ();
-        type WhereClause = ();
-
-        fn transform_from<NewFromClause: FromClause>(
-            self,
-            transform: impl FnOnce(Self::FromClause) -> NewFromClause,
-        ) -> impl TableExpression {
-            TableExpr {
-                from_clause: transform(()),
-                where_clause: (),
-                group_by: (),
-                having: (),
-            }
-        }
-
-        fn transform_where<NewWhereClause: WhereClause>(
-            self,
-            transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
-        ) -> impl TableExpression {
-            TableExpr {
-                from_clause: (),
-                where_clause: transform(()),
-                group_by: (),
-                having: (),
-            }
-        }
-    }
-
-    impl FromClause for () {
-        fn add_table_references(self, table_refs: impl TableReferenceList) -> impl FromClause {
-            From { table_refs }
-        }
-    }
-
+    /// An having clause
     pub trait HavingClause: ToQuery {
         const IS_IMPL: bool;
     }
-    impl HavingClause for () {
-        const IS_IMPL: bool = false;
-    }
 
+    /// A group by clause
     pub trait GroupByClause: ToQuery {
         const IS_IMPL: bool;
     }
-    impl GroupByClause for () {
-        const IS_IMPL: bool = false;
-    }
 
+    /// And order by clause
     pub trait OrderByClause: ToQuery {
         const IS_IMPL: bool;
     }
-    impl OrderByClause for () {
-        const IS_IMPL: bool = true;
+
+    /// Insert statement
+    pub trait Insert: ToQuery + Sized {
+        type Target: InsertionTarget;
+        type ColumnsAndSources: InsertColumnsAndSources;
+
+        /// Transform the target of the insert command.
+        fn transform_target<NewTarget: InsertionTarget>(
+            self,
+            transform: impl FnOnce(Self::Target) -> NewTarget,
+        ) -> impl Insert;
+
+        /// Transform the inserted columns and sources.
+        fn transform_columns_and_sources<NewColumnsAndSources: InsertColumnsAndSources>(
+            self,
+            transform: impl FnOnce(Self::ColumnsAndSources) -> NewColumnsAndSources,
+        ) -> impl Insert;
+
+        /// Add an insert column in the query.
+        ///
+        /// This only works if the inserted values are based on a constructor (see [self::FromConstructor]).
+        /// See [self::InsertColumnList]
+        fn add_insert_column(self, column_name: impl ColumnName) -> impl Insert
+        where
+            Self::ColumnsAndSources: FromConstructor,
+        {
+            self.transform_columns_and_sources(|from_constructor| {
+                from_constructor.add_insert_column(column_name)
+            })
+        }
     }
 
-    pub trait LimitExpr {}
-    impl LimitExpr for () {}
+    /// The target of the insertion.
+    pub trait InsertionTarget: ToQuery {}
 
-    /// (<catalog_name> .)? <schema_name> .
-    pub trait SchemaName {}
+    /// What to insert, there are three ways : from a subquery, from a constructor, from default
+    /// values.
+    /// <insert columns and source> ::=  <from subquery> | <from constructor> | <from default>
+    pub trait InsertColumnsAndSources: ToQuery + Sized {}
+
+    /// Insert the results of a sub query.
+    ///
+    /// Super: [self::InsertColumnsAndSources]
+    pub trait FromSubQuery: InsertColumnsAndSources + ToQuery {}
+
+    /// Insert from constructed values.
+    /// <from constructor> ::= [ <left paren> <insert column list> <right paren> ] [ <override clause> ] <contextually typed table value constructor>
+    /// Super: [self::InsertColumnsAndSources]
+    pub trait FromConstructor: InsertColumnsAndSources + ToQuery + Sized {
+        type ColumnList: InsertColumnList;
+        type TableValue: ContextuallyTypedTableValueConstructor;
+
+        /// Transform the list of insert columns.
+        fn transform_insert_column_list<NewColumnList: InsertColumnList>(
+            self,
+            transform: impl FnOnce(Self::ColumnList) -> NewColumnList,
+        ) -> impl FromConstructor;
+
+        /// See [self::InsertColumnList::add_insert_column]
+        fn add_insert_column(self, column_name: impl ColumnName) -> impl FromConstructor {
+            self.transform_insert_column_list(|list| list.add_insert_column(column_name))
+        }
+    }
+
+    /// Insert default values.
+    ///
+    /// Super: [self::InsertColumnsAndSources]
+    pub trait FromDefaults: InsertColumnsAndSources + ToQuery {}
+
+    /// A list of columns which values are inserted.
+    ///
+    /// Children: [self::ColumnName]
+    pub trait InsertColumnList: ToQuery {
+        /// Add a new column name in the list.
+        fn add_insert_column(self, column_name: impl ColumnName) -> impl InsertColumnList;
+    }
+
+    /// A constructor for a table value for insertion.
+    ///
+    /// <contextually typed table value constructor> ::= VALUES <contextually typed row value expression list>
+    /// Super: [self::FromConstructor]
+    pub trait ContextuallyTypedTableValueConstructor: FromConstructor + ToQuery {}
+
+    /// A list of rows values.
+    ///
+    /// <contextually typed row value expression list> ::=
+    /// <contextually typed row value expression>
+    /// [ { <comma> <contextually typed row value expression> }... ]
+    pub trait ContextuallyTypedRowValueExpressionList: Sized + ToQuery {
+        fn add_row_value_expression(
+            self,
+            expr: impl ContextuallyTypedRowValueExpression,
+        ) -> impl ContextuallyTypedRowValueExpressionList {
+            ContextuallyTypedRowExpressionLink(self, expr)
+        }
+    }
+
+    /// An expression to represents a row's values.
+    ///
+    /// It can be either expressed as :
+    /// - a constructor ;
+    /// - a value expression primary.
+    ///
+    /// <contextually typed row value expression> ::=
+    /// <row value special case>
+    /// | <contextually typed row value constructor>
+    pub trait ContextuallyTypedRowValueExpression:
+        ContextuallyTypedRowValueExpressionList + ToQuery
+    {
+    }
+
+    /// A constructor for a row's values.
+    ///
+    /// <contextually typed row value constructor> ::=
+    /// <contextually typed row value constructor element>
+    /// | [ ROW ] <left paren> <contextually typed row value constructor element list> <right paren>
+    pub trait ContextuallyTypedRowValueConstructor:
+        ContextuallyTypedRowValueExpression + ToQuery
+    {
+    }
+
+    /// A list of element to construct a row's values.
+    ///
+    /// <contextually typed row value constructor element list> ::=
+    /// <contextually typed row value constructor element>
+    /// [ { <comma> <contextually typed row value constructor element> }... ]
+    pub trait ContextuallyTypedRowValueConstructorElementList:
+        ContextuallyTypedRowValueConstructor + ToQuery
+    {
+    }
+
+    /// An element of a row's values constructor.
+    ///
+    /// <contextually typed row value constructor element>  ::=
+    /// <value expression>
+    /// | <contextually typed value specification>
+    pub trait ContextuallyTypedRowValueConstructorElement:
+        ContextuallyTypedRowValueConstructor + ToQuery
+    {
+    }
+
+    /// The specification of a value.
+    ///
+    /// <contextually typed value specification> ::=
+    /// <implicitly typed value specification>
+    /// | <default specification>
+    pub trait ContextuallyTypedValueSpecification:
+        ContextuallyTypedRowValueConstructorElement + ToQuery
+    {
+    }
+
+    /// TODO!
+    pub trait RowValueSpecialCase: ToQuery + ContextuallyTypedRowValueExpression {}
+
+    /// A schema name
+    /// <schema name> ::= [ <catalog name> <period> ] <unqualified schema name>
+    pub trait SchemaName: ToQuery {}
+
+    /// Unqualified schema name (without catalog name)
+    pub trait UnqualifiedSchemaName: SchemaName + ToQuery {}
 
     /// <qualifier> ::= <table name> | <correlation name>
     ///
@@ -302,7 +438,7 @@ pub mod grammar {
     /// - [self::ColumnReference]
     /// - [self::SelectList]
     /// Children [self::TableName]
-    pub trait Qualifier {}
+    pub trait Qualifier: ToQuery {}
 
     /// A qualified name <schema_name>. ? <identifier>
     ///
@@ -335,8 +471,11 @@ pub mod grammar {
     /// A table name
     /// <table name> ::= <qualified name> | <qualified local table name>
     ///
+    /// Super:
+    /// - [self::TableReference]
+    /// - [self::InsertionTarget]
     /// Children [self::QualifiedName]
-    pub trait TableName: ToQuery + TableReference {}
+    pub trait TableName: ToQuery + TableReference + InsertionTarget {}
 
     /// <column reference> ::= [ <qualifier> <period> ] <column name>
     ///
@@ -344,6 +483,11 @@ pub mod grammar {
     ///
     /// Super: [self::ValueExpressionPrimary]
     pub trait ColumnReference: ToQuery + ValueExpressionPrimary {}
+
+    /// A comma separated list of column names.
+    ///
+    /// Super: [self::InsertColumnList]
+    pub trait ColumnNameList: ToQuery + InsertColumnList {}
 
     /// A column name
     /// <column name> ::= <identifier>
@@ -373,7 +517,13 @@ pub mod grammar {
     /// - [self::StringValueExpression],
     /// - [self::DateTimeValueExpression],
     /// - [self::IntervalValueExpression]
-    pub trait ValueExpression: RowValueConstructorElement + DerivedColumn + ToQuery {}
+    pub trait ValueExpression:
+        RowValueConstructorElement
+        + DerivedColumn
+        + ContextuallyTypedRowValueConstructorElement
+        + ToQuery
+    {
+    }
 
     /// TODO!
     pub trait StringValueExpression: ValueExpression {}
@@ -394,7 +544,7 @@ pub mod grammar {
 
     /// <term> ::= <factor>
     /// | <term> <asterisk> <factor>
-    /// | <term> <solidus> <factor>   
+    /// | <term> <solidus> <factor>
     ///
     /// Super: [self::NumericValueExpression]
     /// Children : [self::Factor]
@@ -484,6 +634,7 @@ pub mod grammar {
     ///
     /// Super: [self::BooleanTest]
     pub trait BooleanPrimary: BooleanTest + Sized + ToQuery {
+        #[allow(clippy::wrong_self_convention)]
         fn is<TruthVal: TruthValue>(self, truth_value: TruthVal) -> IsTruthValue<Self, TruthVal> {
             IsTruthValue {
                 lhs: self,
@@ -491,6 +642,7 @@ pub mod grammar {
             }
         }
 
+        #[allow(clippy::wrong_self_convention)]
         fn is_not<TruthVal: TruthValue>(
             self,
             truth_value: TruthVal,
@@ -610,4 +762,4 @@ pub mod grammar {
         RowValueConstructor + RowValueConstructorList + ToQuery
     {
     }
-}
+}*/

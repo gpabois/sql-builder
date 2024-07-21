@@ -1,16 +1,6 @@
-use sql_builder_macros::{QualifiedName, SchemaName};
+use sql_builder_macros::{QualifiedName, UnqualifiedSchemaName};
 
 use crate::{grammar, identifier::Identifier, ToQuery};
-
-#[derive(SchemaName)]
-pub struct SchemaName {
-    catalog_name: Identifier,
-    unqualified_schema_name: UnqualifiedSchemaName,
-}
-
-pub struct UnqualifiedSchemaName(Identifier);
-impl grammar::SchemaName for UnqualifiedSchemaName {}
-
 #[derive(QualifiedName)]
 pub struct QualifiedName<SchemaName>
 where
@@ -29,6 +19,8 @@ where
         stream: &mut W,
         ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
-        todo!("implement ToQuery for QualifiedName")
+        self.schema_name.write(stream, ctx)?;
+        write!(stream, ".")?;
+        self.name.write(stream, ctx)
     }
 }

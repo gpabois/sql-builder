@@ -1,15 +1,15 @@
 use crate::{
     either::Either,
-    grammar::{self, FromClause, GroupByClause, HavingClause, TableExpression, WhereClause},
-    ToQuery,
+    grammar::{FromClause, GroupByClause, HavingClause, TableExpression, WhereClause},
+    Blank, ToQuery,
 };
 
 /// A table expression
 pub struct TableExpr<
-    From: grammar::FromClause,
-    Where: grammar::WhereClause,
-    GroupBy: grammar::GroupByClause,
-    Having: grammar::HavingClause,
+    From: FromClause,
+    Where: WhereClause,
+    GroupBy: GroupByClause,
+    Having: HavingClause,
 > {
     pub(crate) from_clause: From,
     pub(crate) where_clause: Where,
@@ -82,6 +82,35 @@ where
         }
 
         Ok(())
+    }
+}
+
+impl TableExpression for Blank {
+    type FromClause = Blank;
+    type WhereClause = Blank;
+
+    fn transform_from<NewFromClause: FromClause>(
+        self,
+        transform: impl FnOnce(Self::FromClause) -> NewFromClause,
+    ) -> impl TableExpression {
+        TableExpr {
+            from_clause: transform(Blank()),
+            where_clause: Blank(),
+            group_by: Blank(),
+            having: Blank(),
+        }
+    }
+
+    fn transform_where<NewWhereClause: WhereClause>(
+        self,
+        transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
+    ) -> impl TableExpression {
+        TableExpr {
+            from_clause: Blank(),
+            where_clause: transform(Blank()),
+            group_by: Blank(),
+            having: Blank(),
+        }
     }
 }
 

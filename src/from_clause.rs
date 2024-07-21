@@ -1,9 +1,8 @@
 use crate::{
     either::Either,
-    grammar::{FromClause, SearchCondition, TableExpression, TableReferenceList},
-    r#where::Where,
+    grammar::{FromClause, TableExpression, TableReferenceList},
     table_expression::TableExpr,
-    ToQuery,
+    Blank, ToQuery,
 };
 
 pub struct From<TabRefs>
@@ -38,7 +37,7 @@ where
     TableRefs: TableReferenceList,
 {
     type FromClause = Self;
-    type WhereClause = ();
+    type WhereClause = Blank;
 
     fn transform_from<NewFromClause: FromClause>(
         self,
@@ -53,9 +52,9 @@ where
     ) -> impl TableExpression {
         TableExpr {
             from_clause: self,
-            where_clause: transform(()),
-            group_by: (),
-            having: (),
+            where_clause: transform(Blank()),
+            group_by: Blank(),
+            having: Blank(),
         }
     }
 }
@@ -80,6 +79,12 @@ impl<Lhs: FromClause, Rhs: FromClause> FromClause for Either<Lhs, Rhs> {
             Either::Left(left) => Either::Left(left.add_table_references(tab_refs)),
             Either::Right(right) => Either::Right(right.add_table_references(tab_refs)),
         }
+    }
+}
+
+impl FromClause for Blank {
+    fn add_table_references(self, table_refs: impl TableReferenceList) -> impl FromClause {
+        From::new(table_refs)
     }
 }
 
