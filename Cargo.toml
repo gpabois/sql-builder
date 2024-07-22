@@ -1,3 +1,4 @@
+workspace = { members = ["sql-builder-def", "sql-builder-meta-macros"] }
 [package]
 name = "sql-builder"
 version = "0.1.0"
