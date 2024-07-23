@@ -1,9 +1,6 @@
 use sql_builder_macros::{QuerySpecification, SelectList};
 
-use crate::{
-    from_clause::From,
-    ToQuery,
-};
+use crate::{from_clause::From, ToQuery};
 
 use crate::grammar as G;
 use crate::helpers as H;
@@ -155,11 +152,7 @@ impl ToQuery for All {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        id,
-        select,
-        ToQuery as _,
-    };
+    use crate::{id, select, ToQuery as _};
 
     #[test]
     fn test_select_basic() {

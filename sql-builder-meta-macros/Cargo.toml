@@ -16,3 +16,4 @@ quote = "1.0.36"
 regex = "1.10.5"
 syn = "2.0.71"
 sql-builder-def = { path = "../sql-builder-def" }
+convert_case = "0.6.0"

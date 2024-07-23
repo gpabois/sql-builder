@@ -26,18 +26,18 @@ pub mod contextually_typed_row_value_constructor_element_list;
 pub mod contextually_typed_row_value_expression_list;
 pub mod either;
 pub mod having;
+pub mod identifier_chain;
 pub mod insert;
 pub mod schema_name;
 pub mod search_condition;
 pub mod unqualified_schema_name;
-pub mod identifier_chain;
 
 use std::io::Write;
 
 #[derive(Default)]
 pub struct ToQueryContext {}
 pub trait ToQuery {
-    fn to_string(&self) -> Result<String, Box<dyn std::error::Error>> {
+    fn to_raw_query(&self) -> Result<String, Box<dyn std::error::Error>> {
         let mut bytes = Vec::<u8>::default();
         let mut ctx = ToQueryContext::default();
         self.write(&mut bytes, &mut ctx)?;
@@ -74,9 +74,9 @@ pub use select::select;
 pub use term::{div, mult};
 pub use where_clause::Where;
 
-pub use sql_builder_macros::{id, check_symbol_loops};
+pub use sql_builder_macros::{check_symbol_loops, id};
 
-check_symbol_loops!{}
+check_symbol_loops!();
 
 #[derive(Default)]
 /// Blank type for default symbol trait implementation.
@@ -99,12 +99,12 @@ pub mod helpers {
 
         /// Distinct values in the Select
         fn distinct(self) -> impl G::QuerySpecification;
-    
+
         fn all(self) -> impl G::QuerySpecification;
-    
+
         fn transform_table_expression<NewTableExpr>(
             self,
-            transform: impl FnOnce(Self::TableExpr) -> NewTableExpr,
+            transform: impl FnOnce(Self::TableExpression) -> NewTableExpr,
         ) -> impl G::QuerySpecification
         where
             NewTableExpr: G::TableExpression;
@@ -112,26 +112,23 @@ pub mod helpers {
 
     pub trait FromClause {
         /// Add table references to the current from clause.
-        fn add_table_references(
-            self, 
-            table_refs: impl G::TableReferenceList
-        ) -> impl G::FromClause;
+        fn add_table_references(self, table_refs: impl G::TableReferenceList)
+            -> impl G::FromClause;
     }
 
     pub trait TableExpression {
-        type FromClause:  G::FromClause;
+        type FromClause: G::FromClause;
         type WhereClause: G::WhereClause;
-    
+
         fn transform_from<NewFromClause: G::FromClause>(
             self,
             transform: impl FnOnce(Self::FromClause) -> NewFromClause,
         ) -> impl G::TableExpression;
-    
+
         fn transform_where<NewWhereClause: G::WhereClause>(
             self,
             transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
         ) -> impl G::TableExpression;
-
     }
 
     pub trait Insert {
@@ -142,7 +139,7 @@ pub mod helpers {
             self,
             transform: impl FnOnce(Self::Target) -> NewTarget,
         ) -> impl G::Insert;
-    
+
         fn transform_columns_and_sources<NewColumnsAndSources: G::InsertColumnsAndSources>(
             self,
             transform: impl FnOnce(Self::ColumnsAndSources) -> NewColumnsAndSources,
@@ -150,20 +147,34 @@ pub mod helpers {
     }
 
     pub trait TableReferenceList {
-        fn add_table_reference(self, table_ref: impl G::TableReference) -> impl G::TableReferenceList;
+        fn add_table_reference(
+            self,
+            table_ref: impl G::TableReference,
+        ) -> impl G::TableReferenceList
+        where
+            Self: G::TableReferenceList;
     }
 
     pub trait IdentifierChain {
         fn add_identifier(self, id: impl G::Identifier) -> impl G::IdentifierChain;
     }
 
-    pub trait SearchCondition {
-        fn or(self, rhs: impl BooleanTerm) -> impl SearchCondition {
+    pub trait SearchCondition
+    where
+        Self: Sized,
+    {
+        fn or(self, rhs: impl G::BooleanTerm) -> impl G::SearchCondition
+        where
+            Self: G::SearchCondition,
+        {
             crate::or(self, rhs)
         }
     }
 
-    pub trait BooleanTerm {
+    pub trait BooleanTerm
+    where
+        Self: Sized + G::BooleanTerm,
+    {
         fn and(self, rhs: impl G::BooleanFactor) -> impl G::BooleanTerm {
             crate::and(self, rhs)
         }

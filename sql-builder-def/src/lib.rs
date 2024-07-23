@@ -1,23 +1,15 @@
-use std::default;
-
 use itertools::Itertools;
 use phf::phf_map;
 
 pub struct SymbolDef {
     flags: u8,
-    deps: &'static [&'static str],
+    pub deps: &'static [&'static str],
 }
 
 impl SymbolDef {
     #[inline]
-    pub const fn new(
-        deps: &'static [&'static str],
-        flags: u8
-    ) -> Self {
-        Self {
-            flags,
-            deps,
-        }
+    pub const fn new(deps: &'static [&'static str], flags: u8) -> Self {
+        Self { flags, deps }
     }
 
     #[inline]
@@ -36,12 +28,15 @@ pub const WITH_HELPERS: u8 = 0b10;
 
 /// Defines the symbols in the SQL grammar.
 pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
+    /*
+        *
+    */
     "Asterisk" => SymbolDef::new(&[], 0),
 
     /*
-        <query specification> ::= 
-            SELECT [ <set quantifier> ] 
-                <select list> 
+        <query specification> ::=
+            SELECT [ <set quantifier> ]
+                <select list>
                 <table expression>
     */
     "QuerySpecification" => SymbolDef::new(&[], WITH_HELPERS),
@@ -51,7 +46,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             [ <where clause> ]
             [ <group by clause> ]
             [ <having clause> ]
-            [ <window clause> ] 
+            [ <window clause> ]
     */
     "TableExpression" => SymbolDef::new(&["FromClause"], WITH_HELPERS),
 
@@ -59,7 +54,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <from clause> ::= FROM <table reference list>
     */
     "FromClause" => SymbolDef::new(&[], WITH_HELPERS),
-    /* 
+    /*
         <where clause> ::= WHERE <search condition>
     */
     "WhereClause" => SymbolDef::new(&[], WITH_BLANK_IMPL),
@@ -67,25 +62,25 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <group by clause> ::= GROUP BY [ <set quantifier> ] <grouping element list>
     */
     "GroupByClause" => SymbolDef::new(&[], WITH_BLANK_IMPL),
-    
+
     /*
         <having clause> ::= HAVING <search condition>
     */
     "HavingClause" => SymbolDef::new(&[], WITH_BLANK_IMPL),
 
     /*
-        <select list> ::= 
-            <asterisk> 
+        <select list> ::=
+            <asterisk>
             | <select sublist>
-    */    
+    */
     "SelectList" => SymbolDef::new(&[
-        "SelectSublist", 
+        "SelectSublist",
         "Asterisk"
     ], WITH_BLANK_IMPL),
-    
+
     /*
-        <select sublist> ::= 
-            <derived column> 
+        <select sublist> ::=
+            <derived column>
             | <qualified asterisk>
             | <select sublist> [ { <comma> <select sublist> }... ]
 
@@ -93,11 +88,11 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         Recursive <select sublist> chaining.
     */
     "SelectSublist" => SymbolDef::new(&[
-        "DerivedColumn", 
+        "DerivedColumn",
         "QualifiedAsterisk"
     ], WITH_BLANK_IMPL),
-    
-    /* 
+
+    /*
         <qualified asterisk>    ::=
             <asterisked identifier chain> <period> <asterisk>
             | <all fields reference>
@@ -106,15 +101,15 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         "AllFieldsReference"
     ], 0),
 
-    /* 
-        <all fields reference> ::= 
-        <value expression primary> <period> <asterisk> 
-        [ AS <left paren> <all fields column name list> <right paren> ] 
+    /*
+        <all fields reference> ::=
+        <value expression primary> <period> <asterisk>
+        [ AS <left paren> <all fields column name list> <right paren> ]
     */
     "AllFieldsReference" => SymbolDef::new(&[], 0),
-    
+
     /*
-        <derived column> ::= <value expression> [ <as clause> ] 
+        <derived column> ::= <value expression> [ <as clause> ]
     */
     "DerivedColumn" => SymbolDef::new(&[
         "ValueExpression"
@@ -127,8 +122,8 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             | <row value expression>
     */
     "ValueExpression" => SymbolDef::new(&[
-        "CommonValueExpression", 
-        "BooleanValueExpression", 
+        "CommonValueExpression",
+        "BooleanValueExpression",
         "RowValueExpression"
     ], 0),
 
@@ -185,7 +180,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             | <numeric value function>
     */
     "NumericPrimary" => SymbolDef::new(&[
-        "ValueExpressionPrimary", 
+        "ValueExpressionPrimary",
         "NumericValueFunction"
     ], 0),
 
@@ -203,7 +198,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             | <square root>
             | <floor function>
             | <ceiling function>
-            | <width bucket function>  
+            | <width bucket function>
     */
     "NumericValueFunction" => SymbolDef::new(&[
         "PositionExpression",
@@ -223,10 +218,10 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
 
     /*
         <width bucket function> ::= WIDTH_BUCKET (
-            <width bucket operand>, 
+            <width bucket operand>,
             <width bucket bound 1>,
-            <width bucket bound 2>, 
-            <width bucket count>, 
+            <width bucket bound 2>,
+            <width bucket count>,
         )
     */
     "WidthBucketFunction" => SymbolDef::new(&[], 0),
@@ -238,7 +233,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <width bucket bound 1> ::= <numeric value expression>
     */
     "WidthBucketBound1" => SymbolDef::new(&[], 0),
-    /* 
+    /*
         <width bucket bound 2> ::= <numeric value expression>
     */
     "WidthBucketBound2" => SymbolDef::new(&[], 0),
@@ -246,21 +241,21 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <width bucket count> ::= <numeric value expression>
     */
     "WidthBucketCount" => SymbolDef::new(&[], 0),
-    /* 
-        <ceiling function> ::= FLOOR ( 
-            <numeric value expression> 
+    /*
+        <ceiling function> ::= FLOOR (
+            <numeric value expression>
         )
     */
     "CeilingFunction" => SymbolDef::new(&[], 0),
-    /* 
-        <floor function> ::= FLOOR ( 
-            <numeric value expression> 
+    /*
+        <floor function> ::= FLOOR (
+            <numeric value expression>
         )
     */
     "FloorFunction" => SymbolDef::new(&[], 0),
     /*
         <square root> ::= SQRT (
-            <numeric value expression> 
+            <numeric value expression>
         )
     */
     "SquareRoot" => SymbolDef::new(&[], 0),
@@ -272,42 +267,42 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "PowerFunction" => SymbolDef::new(&[], 0),
     /*
-        <exponential function> ::= EXP ( 
-            <numeric value expression> 
+        <exponential function> ::= EXP (
+            <numeric value expression>
         )
     */
     "ExponentialFunction" => SymbolDef::new(&[], 0),
     /*
-        <natural logarithm> ::= LN ( 
-            <numeric value expression> 
+        <natural logarithm> ::= LN (
+            <numeric value expression>
         )
     */
     "NaturalLogarithm" => SymbolDef::new(&[], 0),
 
     /*
         <modulus expression> ::= MOD (
-             <numeric value expression dividend> , 
+             <numeric value expression dividend> ,
              <numeric value expression divisor>
         )
     */
     "ModulusExpression" => SymbolDef::new(&[], 0),
 
     /*
-        <absolute value expression> ::= 
+        <absolute value expression> ::=
             ABS ( <numeric value expression> )
     */
     "AbsoluteValueExpression" => SymbolDef::new(&[], 0),
 
     /*
-        <cardinality expression> ::= 
+        <cardinality expression> ::=
             CARDINALITY ( <collection value expression> )
     */
     "CardinalityExpression" => SymbolDef::new(&[], 0),
 
     /*
-        <extract expression> ::= 
+        <extract expression> ::=
             EXTRACT (
-                <extract field> 
+                <extract field>
                 FROM <extract source>
         )
     */
@@ -322,15 +317,15 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
 
     /*
         <char length expression> ::=
-            { CHAR_LENGTH | CHARACTER_LENGTH } ( 
-                <string value expression> 
-                [ USING <char length units> ] 
+            { CHAR_LENGTH | CHARACTER_LENGTH } (
+                <string value expression>
+                [ USING <char length units> ]
         )
     */
     "CharLengthExpression" => SymbolDef::new(&[], 0),
 
     /*
-        <octet length expression> ::= 
+        <octet length expression> ::=
             OCTET_LENGTH ( <string value expression> )
     */
     "OctetLengthExpression" => SymbolDef::new(&[], 0),
@@ -346,9 +341,9 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     ], 0),
     /*
         <string position expression> ::=
-            POSITION ( 
-                <string value expression> 
-                IN <string value expression> 
+            POSITION (
+                <string value expression>
+                IN <string value expression>
                 [ USING <char length units> ]?
             )
     */
@@ -356,25 +351,25 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
 
     /*
         <blob position expression> ::=
-            POSITION ( 
-                <blob value expression> 
-                IN <blob value expression> 
+            POSITION (
+                <blob value expression>
+                IN <blob value expression>
             )
     */
     "BlobPositionExpression" => SymbolDef::new(&[], 0),
-    
+
     /*
         <value expression primary> ::=
             <parenthesized value expression>
             | <nonparenthesized value expression primary>
     */
     "ValueExpressionPrimary" => SymbolDef::new(&[
-        "ParenthesizedValueExpression", 
+        "ParenthesizedValueExpression",
         "NonParenthesizedValueExpressionPrimary"
     ], 0),
-    
+
     /*
-        <parenthesized value expression> ::= 
+        <parenthesized value expression> ::=
             <left paren> <value expression> <right paren>
     */
     "ParenthesizedValueExpression" => SymbolDef::new(&[], 0),
@@ -424,8 +419,8 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     ], 0),
 
     /*
-        <set function specification> ::= 
-            <aggregate function> 
+        <set function specification> ::=
+            <aggregate function>
             | <grouping operation>
     */
     "SetFunctionReference" => SymbolDef::new(&[
@@ -438,13 +433,13 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             COUNT <left paren> <asterisk> <right paren> [ <filter clause> ]
             | <general set function> [ <filter clause> ]
             | <binary set function> [ <filter clause> ]
-            | <ordered set function> [ <filter clause> ] 
+            | <ordered set function> [ <filter clause> ]
     */
     "AggregateFunction" => SymbolDef::new(&[], 0),
-    
+
     /*
-        <unsigned value specification> ::= 
-            <unsigned literal> 
+        <unsigned value specification> ::=
+            <unsigned literal>
             | <general value specification>
     */
     "UnsignedValueSpecification" => SymbolDef::new(&[], 0),
@@ -464,7 +459,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             | SESSION_USER
             | SYSTEM_USER
             | USER
-            | VALUE 
+            | VALUE
     */
     "GeneralValueSpecification" => SymbolDef::new(&[
         "HostParameterSpecification",
@@ -509,26 +504,26 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "CurrentTransformGroupForType" => SymbolDef::new(&[], 0),
 
     /*
-        CURRENT_ROLE 
+        CURRENT_ROLE
     */
     "CurrentRole" => SymbolDef::new(&[], 0),
 
     /*
-        CURRENT_PATH 
+        CURRENT_PATH
     */
     "CurrentPath" => SymbolDef::new(&[], 0),
 
     /*
-        <current collation specification> ::= CURRENT_COLLATION ( 
-            <string value expression> 
+        <current collation specification> ::= CURRENT_COLLATION (
+            <string value expression>
         )
     */
     "CurrentCollationSpecification" => SymbolDef::new(&[], 0),
 
     /*
-        <host parameter specification> ::= 
-            <host parameter name> 
-            [ <indicator parameter> ] 
+        <host parameter specification> ::=
+            <host parameter name>
+            [ <indicator parameter> ]
     */
     "HostParameterSpecification" => SymbolDef::new(&["HostParameterName"], 0),
 
@@ -543,7 +538,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "SQLParameterReference" => SymbolDef::new(&["BasicIdentifierChain"], 0),
 
     /*
-        <embedded variable specification> ::= <embedded variable name> [ <indicator variable> ] 
+        <embedded variable specification> ::= <embedded variable name> [ <indicator variable> ]
      */
     "EmbeddedVariableSpecification" => SymbolDef::new(&["EmbeddedVariableName"], 0),
 
@@ -564,16 +559,16 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "HostIdentifier" => SymbolDef::new(&[], 0),
 
-    /* 
-        <unsigned literal> ::= 
-            <unsigned numeric literal> 
+    /*
+        <unsigned literal> ::=
+            <unsigned numeric literal>
             | <general literal>
     */
     "UnsignedLiteral" => SymbolDef::new(&[], 0),
 
     /*
-        <unsigned numeric literal> ::= 
-            <exact numeric literal> 
+        <unsigned numeric literal> ::=
+            <exact numeric literal>
             | <approximate numeric literal>
     */
     "UnsignedNumericLiteral" => SymbolDef::new(&[], 0),
@@ -607,26 +602,26 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     ], 0),
 
     /*
-        <table reference list> ::= <table reference> [ { <comma> <table reference> }... ] 
+        <table reference list> ::= <table reference> [ { <comma> <table reference> }... ]
     */
     "TableReferenceList" => SymbolDef::new(&[
         "TableReference"
     ], WITH_HELPERS),
 
     /*
-        <table reference> ::= <table primary or joined table> [ <sample clause> ] 
+        <table reference> ::= <table primary or joined table> [ <sample clause> ]
     */
     "TableReference" => SymbolDef::new(&[
         "TablePrimaryOrJoinedTable"
     ], 0),
 
     /*
-        <table primary or joined table> ::= 
-            <table primary> 
+        <table primary or joined table> ::=
+            <table primary>
             | <joined table>
     */
     "TablePrimaryOrJoinedTable" => SymbolDef::new(&[
-        "TablePrimary", 
+        "TablePrimary",
         "JoinedTable"
     ], 0),
 
@@ -654,7 +649,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <table or query name> ::= <table name> | <query name>
     */
     "TableOrQueryName" => SymbolDef::new(&[
-        "TableName", 
+        "TableName",
         "QueryName"
     ], 0),
 
@@ -662,22 +657,22 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <lateral derived table> ::= LATERAL <table subquery>
     */
     "LateralDerivedTable" => SymbolDef::new(&["TableSubquery"], 0),
-    
+
     /*
-        <collection derived table> ::= UNNEST 
-            <left paren> <collection value expression> <right paren> 
-            [ WITH ORDINALITY ] 
+        <collection derived table> ::= UNNEST
+            <left paren> <collection value expression> <right paren>
+            [ WITH ORDINALITY ]
     */
     "CollectionDerivedTable" => SymbolDef::new(&[], 0),
 
     /*
-        <only spec> ::= ONLY 
+        <only spec> ::= ONLY
         <left paren> <table or query name> <right paren>
     */
     "OnlySpec" => SymbolDef::new(&[], 0),
 
     /*
-        <table function derived table> ::= TABLE 
+        <table function derived table> ::= TABLE
             <left paren> <collection value expression> <right paren>
     */
     "TableFunctionDerivedTable" => SymbolDef::new(&[], 0),
@@ -688,7 +683,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "ParenthesizedJoinedTable" => SymbolDef::new(&[], 0),
 
     /*
-        <derived table> ::= <table subquery> 
+        <derived table> ::= <table subquery>
      */
     "DerivedTable" => SymbolDef::new(&["TableSubquery"], 0),
     /*
@@ -708,7 +703,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         "LocalOrSchemaQualifiedName"
     ], 0),
     /*
-        <local or schema qualified name> ::= 
+        <local or schema qualified name> ::=
         [ <local or schema qualifier> <period> ] <qualified identifier>
     */
     "LocalOrSchemaQualifiedName" => SymbolDef::new(&[
@@ -716,7 +711,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     ], 0),
 
     /*
-        <local or schema qualifier> ::= <schema name> | MODULE 
+        <local or schema qualifier> ::= <schema name> | MODULE
     */
     "LocalOrSchemaQualifier" => SymbolDef::new(&["SchemaName", "Module"], 0),
     /*
@@ -729,7 +724,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "QualifiedIdentifier" => SymbolDef::new(&["Identifier"], 0),
     "Qualifier" => SymbolDef::new(&[], 0),
-    
+
     "Insert" => SymbolDef::new(&[], 0),
     "InsertionTarget" => SymbolDef::new(&[], 0),
     "InsertColumnsAndSources" => SymbolDef::new(&[], 0),
@@ -774,20 +769,20 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "BooleanFactor" => SymbolDef::new(&["BooleanTest"], 0),
     /*
-        <boolean test> ::= <boolean primary> [ IS [ NOT ] <truth value> ] 
+        <boolean test> ::= <boolean primary> [ IS [ NOT ] <truth value> ]
     */
     "BooleanTest" => SymbolDef::new(&["BooleanPrimary"], 0),
     /*
-        <truth value>    ::=   TRUE | FALSE | UNKNOWN 
+        <truth value>    ::=   TRUE | FALSE | UNKNOWN
     */
     "TruthValue" => SymbolDef::new(&["TruthValue"], 0),
     /*
-        <boolean primary> ::= 
-            <predicate> 
+        <boolean primary> ::=
+            <predicate>
             | <boolean predicand>
     */
     "BooleanPrimary" => SymbolDef::new(&[
-        "Predicate", 
+        "Predicate",
         "BooleanPredicand"
     ], 0),
 
@@ -802,7 +797,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     ], 0),
 
     /*
-        <parenthesized boolean value expression> ::= 
+        <parenthesized boolean value expression> ::=
             ( <boolean value expression> )
     */
     "ParenthesizedBooleanValueExpression" => SymbolDef::new(&[
@@ -850,44 +845,44 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     ], 0),
 
     /*
-        <comparison predicate> ::= 
-            <row value predicand> 
+        <comparison predicate> ::=
+            <row value predicand>
             <comparison predicate part 2>
     */
     "ComparisonPredicate" => SymbolDef::new(&[], 0),
     /*
-        <between predicate> ::= 
-            <row value predicand> 
+        <between predicate> ::=
+            <row value predicand>
             <between predicate part 2>
     */
     "BetweenPredicate" => SymbolDef::new(&[], 0),
     /*
-        <in predicate> ::= 
-            <row value predicand> 
+        <in predicate> ::=
+            <row value predicand>
             <in predicate part 2>
     */
     "InPredicate" => SymbolDef::new(&[], 0),
     /*
-        <like predicate> ::= 
-            <character like predicate> 
+        <like predicate> ::=
+            <character like predicate>
             | <octet like predicate>
     */
     "LikePredicate" => SymbolDef::new(&[], 0),
     /*
-        <similar predicate> ::= 
-            <row value predicand> 
+        <similar predicate> ::=
+            <row value predicand>
             <similar predicate part 2>
     */
     "SimilarPredicate" => SymbolDef::new(&[], 0),
     /*
-        <null predicate> ::= 
-            <row value predicand> 
+        <null predicate> ::=
+            <row value predicand>
             <null predicate part 2>
     */
     "NullPredicate" => SymbolDef::new(&[], 0),
     /*
-        <quantified comparison predicate> ::= 
-            <row value predicand> 
+        <quantified comparison predicate> ::=
+            <row value predicand>
             <quantified comparison predicate part 2>
     */
     "QuantifiedComparisonPredicate" => SymbolDef::new(&[], 0),
@@ -901,51 +896,51 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "UniquePredicate" => SymbolDef::new(&[], 0),
     /*
         <normalized predicate> ::=
-            <string value expression> 
-            IS [ NOT ] NORMALIZED 
+            <string value expression>
+            IS [ NOT ] NORMALIZED
     */
     "NormalizedPredicate" => SymbolDef::new(&[], 0),
     /*
-        <match predicate> ::= 
-            <row value predicand> 
+        <match predicate> ::=
+            <row value predicand>
             <match predicate part 2>
     */
     "MatchPredicate" => SymbolDef::new(&[], 0),
     /*
-        <overlaps predicate> ::= 
-            <overlaps predicate part 1> 
+        <overlaps predicate> ::=
+            <overlaps predicate part 1>
             <overlaps predicate part 2>
     */
     "OverlapsPredicate" => SymbolDef::new(&[], 0),
 
     /*
-        <distinct predicate> ::= 
-            <row value predicand 3> 
+        <distinct predicate> ::=
+            <row value predicand 3>
             <distinct predicate part 2>
     */
     "DistinctPredicate" => SymbolDef::new(&[], 0),
     /*
-        <member predicate> ::= 
-            <row value predicand> 
+        <member predicate> ::=
+            <row value predicand>
             <member predicate part 2>
     */
     "MemberPredicate" => SymbolDef::new(&[], 0),
     /*
-        <submultiset predicate> ::= 
-            <row value predicand> 
+        <submultiset predicate> ::=
+            <row value predicand>
             <submultiset predicate part 2>
     */
     "SubmultisetPredicate" => SymbolDef::new(&[], 0),
     /*
-        <set predicate> ::= 
-            <row value predicand> 
+        <set predicate> ::=
+            <row value predicand>
             <set predicate part 2>
     */
     "SetPredicate" => SymbolDef::new(&[], 0),
 
     /*
-        <type predicate> ::= 
-            <row value predicand> 
+        <type predicate> ::=
+            <row value predicand>
             <type predicate part 2>
     */
     "TypePredicate" => SymbolDef::new(&[], 0),
@@ -961,7 +956,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     ], 0),
 
     /*
-        <row value special case> ::= 
+        <row value special case> ::=
             <nonparenthesized value expression primary>
     */
     "RowValueSpecialCase" => SymbolDef::new(&[
@@ -988,30 +983,66 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "ExplicitRowValueConstructor" => SymbolDef::new(&["RowSubquery"], 0),
     /*
-        <row subquery>    ::=   <subquery>
+        <row subquery> ::=   <subquery>
     */
     "RowSubquery" => SymbolDef::new(&["Subquery"], 0),
-    "RowValueConstructor" => SymbolDef::new(&[], 0),
+    "RowValueConstructor" => SymbolDef::new(&[
+        "CommonValueExpression",
+        "BooleanValueExpression",
+        "ExplicitRowValueConstructor"
+    ], 0),
     "RowValueConstructorList" => SymbolDef::new(&[], 0),
     "RowValueConstructorElement" => SymbolDef::new(&[], 0),
+    "RowValueExpression" => SymbolDef::new(&[], 0),
+    "BasicIdentifierChain" => SymbolDef::new(&[], 0),
+    "JoinedTable" => SymbolDef::new(&[], 0),
+    "WindowFunction" => SymbolDef::new(&[], 0),
+    "NonparenthesizedValueExpressionPrimary" => SymbolDef::new(&[], 0),
+    "DynamicParameterSpecification" => SymbolDef::new(&[], 0),
+    "QueryName" => SymbolDef::new(&[], 0),
+    "CurrentDefaultTransformGroup" => SymbolDef::new(&[], 0),
+    "GroupingOperation" => SymbolDef::new(&[], 0),
+    "SystemUser" => SymbolDef::new(&[], 0),
+    "ScalarSubquery" => SymbolDef::new(&[], 0),
+    "CaseExpression" => SymbolDef::new(&[], 0),
+    "CastSpecification" => SymbolDef::new(&[], 0),
+    "FieldReference" => SymbolDef::new(&[], 0),
+    "SubtypeTreatment" => SymbolDef::new(&[], 0),
+    "MethodInvocation" => SymbolDef::new(&[], 0),
+    "StaticMethodInvocation" => SymbolDef::new(&[], 0),
+    "NewSpecification" => SymbolDef::new(&[], 0),
+    "AttributeOrMethodReference" => SymbolDef::new(&[], 0),
+    "ReferenceResolution" => SymbolDef::new(&[], 0),
+    "CollectionValueConstructor" => SymbolDef::new(&[], 0),
+    "ArrayElementReference" => SymbolDef::new(&[], 0),
+    "MultisetElementReference" => SymbolDef::new(&[], 0),
+    "RoutineInvocation" => SymbolDef::new(&[], 0),
+    "NextValueExpression" => SymbolDef::new(&[], 0),
+
+
 
 };
 
 pub struct SymbolDependentsIterator<'s> {
-    stack: Vec::<&'s str>,
+    stack: Vec<&'s str>,
+    visited: Vec<&'s str>,
 }
 
 impl<'s> Iterator for SymbolDependentsIterator<'s> {
     type Item = &'s str;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(symbol) = self.stack.pop() {    
-            self.stack.extend(SYMBOL_MAP.keys().find(move |key| {
-                let flags = &SYMBOL_MAP[**key];
-                flags.deps.contains(&symbol)
-            }));          
+        if let Some(symbol) = self.stack.pop() {
+            self.visited.push(symbol);
 
-            return Some(symbol)
+            if !self.visited.contains(&symbol) {
+                self.stack.extend(SYMBOL_MAP.keys().find(move |key| {
+                    let flags = &SYMBOL_MAP[**key];
+                    flags.deps.contains(&symbol)
+                }));
+            }
+
+            return Some(symbol);
         }
 
         None
@@ -1019,30 +1050,30 @@ impl<'s> Iterator for SymbolDependentsIterator<'s> {
 }
 
 /// Iterate over all dependents of the symbol.
-/// 
+///
 /// The iterator does not prevent loops.
-pub fn iter_dependents<'s>(symbol: &'s str) -> impl Iterator<Item=&'s str> {
+pub fn iter_dependents(symbol: &str) -> impl Iterator<Item = &'_ str> {
     SymbolDependentsIterator {
-        stack: vec![symbol]
+        stack: vec![symbol],
+        visited: vec![],
     }
 }
 
-pub fn detect_loop<'s>(symbol: &'s str) -> Result<(), Vec<&'s str>> {
+pub fn detect_loop(symbol: &str) -> Result<(), Vec<&str>> {
     let mut acc = Vec::<&str>::default();
 
-    for el in iter_dependents(symbol) {
+    for el in iter_dependents(symbol).dropping(1) {
         acc.push(el);
 
         if el == symbol {
-            return Err(acc)
+            return Err(acc);
         }
     }
 
     Ok(())
 }
 
-/// Fetch the dependents of the symbol. 
-pub fn fetch_deps(symbol: &str) -> impl Iterator<Item=&str> {
-    iter_dependents(symbol)
-    .dedup()
+/// Fetch the dependents of the symbol.
+pub fn fetch_deps(symbol: &str) -> impl Iterator<Item = &str> {
+    iter_dependents(symbol).dedup()
 }

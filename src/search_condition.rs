@@ -1,5 +1,7 @@
-use crate::ToQuery;
 use crate::grammar as G;
+use crate::helpers as H;
+
+use crate::ToQuery;
 use sql_builder_macros::SearchCondition;
 
 #[derive(SearchCondition)]
@@ -10,6 +12,13 @@ where
 {
     lhs: Lhs,
     rhs: Rhs,
+}
+
+impl<Lhs, Rhs> H::SearchCondition for Or<Lhs, Rhs>
+where
+    Lhs: G::SearchCondition,
+    Rhs: G::BooleanTerm,
+{
 }
 
 impl<SearchCond, BoolTerm> ToQuery for Or<SearchCond, BoolTerm>
@@ -30,7 +39,10 @@ where
 
 #[inline]
 /// Creates an OR search condition
-pub fn or(lhs: impl G::SearchCondition, rhs: impl G::BooleanTerm) -> impl G::SearchCondition {
+pub fn or<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> Or<Lhs, Rhs>
+where
+    Lhs: G::SearchCondition,
+    Rhs: G::BooleanTerm,
+{
     Or { lhs, rhs }
 }
-

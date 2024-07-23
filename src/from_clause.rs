@@ -1,12 +1,11 @@
-use crate::{
-    either::Either,
-    table_expression::TableExpr,
-    Blank, ToQuery,
-};
+use sql_builder_macros::FromClause;
+
+use crate::{either::Either, table_expression::TableExpr, Blank, ToQuery};
 
 use crate::grammar as G;
 use crate::helpers as H;
 
+#[derive(FromClause)]
 pub struct From<TabRefs>
 where
     TabRefs: G::TableReferenceList,
@@ -27,9 +26,12 @@ impl<TabRefs> H::FromClause for From<TabRefs>
 where
     TabRefs: G::TableReferenceList,
 {
-    fn add_table_references(self, table_refs: impl G::TableReferenceList) -> impl G::FromClause {
+    fn add_table_references<TabRef>(self, table_refs: TabRef) -> impl G::FromClause
+    where
+        TabRef: G::TableReference,
+    {
         From {
-            table_refs: self.table_refs.chain(table_refs),
+            table_refs: self.table_refs.add_table_reference(table_refs),
         }
     }
 }
@@ -75,7 +77,18 @@ where
     }
 }
 
-impl<Lhs: G::FromClause, Rhs: G::FromClause> H::FromClause for Either<Lhs, Rhs> {
+impl<Lhs, Rhs> G::FromClause for Either<Lhs, Rhs>
+where
+    Lhs: G::FromClause,
+    Rhs: G::FromClause,
+{
+}
+
+impl<Lhs, Rhs> H::FromClause for Either<Lhs, Rhs>
+where
+    Lhs: G::FromClause,
+    Rhs: G::FromClause,
+{
     fn add_table_references(self, tab_refs: impl G::TableReferenceList) -> impl G::FromClause {
         match self {
             Either::Left(left) => Either::Left(left.add_table_references(tab_refs)),

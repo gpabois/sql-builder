@@ -1,24 +1,23 @@
 use sql_builder_macros::BooleanTerm;
 
-use crate::{
-    grammar::{self, BooleanFactor, BooleanTerm},
-    ToQuery,
-};
+use crate::ToQuery;
+
+use crate::grammar as G;
 
 #[derive(BooleanTerm)]
-pub struct And<BoolTerm, BoolFactor>
+pub struct And<Lhs, Rhs>
 where
-    BoolTerm: grammar::BooleanTerm,
-    BoolFactor: grammar::BooleanFactor,
+    Lhs: G::BooleanTerm,
+    Rhs: G::BooleanFactor,
 {
-    lhs: BoolTerm,
-    rhs: BoolFactor,
+    lhs: Lhs,
+    rhs: Rhs,
 }
 
-impl<BoolTerm, BoolFactor> ToQuery for And<BoolTerm, BoolFactor>
+impl<Lhs, Rhs> ToQuery for And<Lhs, Rhs>
 where
-    BoolTerm: grammar::BooleanTerm,
-    BoolFactor: grammar::BooleanFactor,
+    Lhs: G::BooleanTerm,
+    Rhs: G::BooleanFactor,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -32,7 +31,11 @@ where
 }
 
 #[inline]
-pub fn and(lhs: impl BooleanTerm, rhs: impl BooleanFactor) -> impl BooleanTerm {
+pub fn and<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> And<Lhs, Rhs>
+where
+    Lhs: G::BooleanTerm,
+    Rhs: G::BooleanFactor,
+{
     And { lhs, rhs }
 }
 
@@ -46,9 +49,8 @@ mod tests {
         let cond2 = neq(id("c"), id("d"));
 
         let term = and(cond1, cond2);
-        let sql = term.to_string().unwrap();
+        let sql = term.to_raw_query().unwrap();
 
         assert_eq!(sql, "a = b AND c <> d");
     }
 }
-

@@ -156,43 +156,42 @@ mod tests {
     #[test]
     fn test_eq() {
         let cmp = eq(id("test"), lit(10.123f32));
-        let sql = cmp.to_string().unwrap();
+        let sql = cmp.to_raw_query().unwrap();
         assert_eq!(sql, "test = 10.123");
     }
 
     #[test]
     fn test_neq() {
         let cmp = neq(id("test"), lit(10.123f32));
-        let sql = cmp.to_string().unwrap();
+        let sql = cmp.to_raw_query().unwrap();
         assert_eq!(sql, "test <> 10.123");
     }
 
     #[test]
     fn test_lt() {
         let cmp = lt(id("test"), lit(10.123f32));
-        let sql = cmp.to_string().unwrap();
+        let sql = cmp.to_raw_query().unwrap();
         assert_eq!(sql, "test < 10.123");
     }
 
     #[test]
     fn test_lte() {
         let cmp = lte(id("test"), lit(10.123f32));
-        let sql = cmp.to_string().unwrap();
+        let sql = cmp.to_raw_query().unwrap();
         assert_eq!(sql, "test <= 10.123");
     }
 
     #[test]
     fn test_gt() {
         let cmp = gt(id("test"), lit(10.123f32));
-        let sql = cmp.to_string().unwrap();
+        let sql = cmp.to_raw_query().unwrap();
         assert_eq!(sql, "test > 10.123");
     }
 
     #[test]
     fn test_gte() {
         let cmp = gte(id("test"), lit(10.123f32));
-        let sql = cmp.to_string().unwrap();
+        let sql = cmp.to_raw_query().unwrap();
         assert_eq!(sql, "test >= 10.123");
     }
 }
-
