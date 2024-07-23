@@ -1,55 +1,57 @@
 use crate::{
     either::Either,
-    grammar::{FromClause, TableExpression, TableReferenceList},
     table_expression::TableExpr,
     Blank, ToQuery,
 };
 
+use crate::grammar as G;
+use crate::helpers as H;
+
 pub struct From<TabRefs>
 where
-    TabRefs: TableReferenceList,
+    TabRefs: G::TableReferenceList,
 {
     pub(crate) table_refs: TabRefs,
 }
 
 impl<TabRefs> From<TabRefs>
 where
-    TabRefs: TableReferenceList,
+    TabRefs: G::TableReferenceList,
 {
     pub fn new(table_refs: TabRefs) -> Self {
         Self { table_refs }
     }
 }
 
-impl<TabRefs> FromClause for From<TabRefs>
+impl<TabRefs> H::FromClause for From<TabRefs>
 where
-    TabRefs: TableReferenceList,
+    TabRefs: G::TableReferenceList,
 {
-    fn add_table_references(self, table_refs: impl TableReferenceList) -> impl FromClause {
+    fn add_table_references(self, table_refs: impl G::TableReferenceList) -> impl G::FromClause {
         From {
             table_refs: self.table_refs.chain(table_refs),
         }
     }
 }
 
-impl<TableRefs> TableExpression for From<TableRefs>
+impl<TableRefs> H::TableExpression for From<TableRefs>
 where
-    TableRefs: TableReferenceList,
+    TableRefs: G::TableReferenceList,
 {
     type FromClause = Self;
     type WhereClause = Blank;
 
-    fn transform_from<NewFromClause: FromClause>(
+    fn transform_from<NewFromClause: G::FromClause>(
         self,
         transform: impl FnOnce(Self::FromClause) -> NewFromClause,
-    ) -> impl TableExpression {
+    ) -> impl G::TableExpression {
         transform(self)
     }
 
-    fn transform_where<NewWhereClause: crate::grammar::WhereClause>(
+    fn transform_where<NewWhereClause: G::WhereClause>(
         self,
         transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
-    ) -> impl TableExpression {
+    ) -> impl G::TableExpression {
         TableExpr {
             from_clause: self,
             where_clause: transform(Blank()),
@@ -61,7 +63,7 @@ where
 
 impl<TabRefs> ToQuery for From<TabRefs>
 where
-    TabRefs: TableReferenceList,
+    TabRefs: G::TableReferenceList,
 {
     fn write<W: std::io::prelude::Write>(
         &self,
@@ -73,8 +75,8 @@ where
     }
 }
 
-impl<Lhs: FromClause, Rhs: FromClause> FromClause for Either<Lhs, Rhs> {
-    fn add_table_references(self, tab_refs: impl TableReferenceList) -> impl FromClause {
+impl<Lhs: G::FromClause, Rhs: G::FromClause> H::FromClause for Either<Lhs, Rhs> {
+    fn add_table_references(self, tab_refs: impl G::TableReferenceList) -> impl G::FromClause {
         match self {
             Either::Left(left) => Either::Left(left.add_table_references(tab_refs)),
             Either::Right(right) => Either::Right(right.add_table_references(tab_refs)),
@@ -82,8 +84,8 @@ impl<Lhs: FromClause, Rhs: FromClause> FromClause for Either<Lhs, Rhs> {
     }
 }
 
-impl FromClause for Blank {
-    fn add_table_references(self, table_refs: impl TableReferenceList) -> impl FromClause {
+impl H::FromClause for Blank {
+    fn add_table_references(self, table_refs: impl G::TableReferenceList) -> impl G::FromClause {
         From::new(table_refs)
     }
 }

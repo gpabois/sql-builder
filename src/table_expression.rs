@@ -1,9 +1,15 @@
+use sql_builder_macros::TableExpression;
+
 use crate::{
     either::Either,
     grammar::{FromClause, GroupByClause, HavingClause, TableExpression, WhereClause},
     Blank, ToQuery,
 };
 
+use crate::grammar as G;
+use crate::helpers as H;
+
+#[derive(TableExpression)]
 /// A table expression
 pub struct TableExpr<
     From: FromClause,
@@ -17,7 +23,7 @@ pub struct TableExpr<
     pub(crate) having: Having,
 }
 
-impl<From, Where, GroupBy, Having> TableExpression for TableExpr<From, Where, GroupBy, Having>
+impl<From, Where, GroupBy, Having> H::TableExpression for TableExpr<From, Where, GroupBy, Having>
 where
     From: FromClause,
     Where: WhereClause,
@@ -85,7 +91,7 @@ where
     }
 }
 
-impl TableExpression for Blank {
+impl H::TableExpression for Blank {
     type FromClause = Blank;
     type WhereClause = Blank;
 
@@ -114,10 +120,10 @@ impl TableExpression for Blank {
     }
 }
 
-impl<Lhs, Rhs> TableExpression for Either<Lhs, Rhs>
+impl<Lhs, Rhs> H::TableExpression for Either<Lhs, Rhs>
 where
-    Lhs: TableExpression,
-    Rhs: TableExpression,
+    Lhs: H::TableExpression,
+    Rhs: H::TableExpression,
 {
     type FromClause = Either<Lhs::FromClause, Rhs::FromClause>;
     type WhereClause = Either<Lhs::WhereClause, Rhs::WhereClause>;

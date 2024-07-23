@@ -1,30 +1,32 @@
 use sql_builder_macros::TableReferenceList;
 
-use crate::{grammar::TableReferenceList, ToQuery};
+use crate::ToQuery;
+use crate::grammar as G;
+use crate::helpers as H;
 
 #[derive(TableReferenceList)]
-pub struct TableRefList<Lhs, Rhs>
+pub struct TableReferenceLink<Head, Tail>
 where
-    Lhs: TableReferenceList,
-    Rhs: TableReferenceList,
+    Head: G::TableReferenceList,
+    Tail: G::TableReference,
 {
-    pub(crate) lhs: Lhs,
-    pub(crate) rhs: Rhs,
+    pub(crate) head: Head,
+    pub(crate) tail: Tail,
 }
 
-impl<Lhs, Rhs> ToQuery for TableRefList<Lhs, Rhs>
+impl<Head, Tail> ToQuery for TableReferenceLink<Head, Tail>
 where
-    Lhs: TableReferenceList,
-    Rhs: TableReferenceList,
+    Head: G::TableReferenceList,
+    Tail: G::TableReferenceList,
 {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
         ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
-        self.lhs.write(stream, ctx)?;
+        self.head.write(stream, ctx)?;
         write!(stream, ", ")?;
-        self.rhs.write(stream, ctx)
+        self.tail.write(stream, ctx)
     }
 }
 

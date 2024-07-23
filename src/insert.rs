@@ -1,24 +1,30 @@
+use sql_builder_macros::Insert;
+
 use crate::{
     grammar::{self, InsertColumnsAndSources, InsertionTarget},
     ToQuery,
 };
 
+use crate::grammar as G;
+use crate::helpers as H;
+
+#[derive(Insert)]
 pub struct Insert<Target, Values>
 where
-    Target: InsertionTarget,
-    Values: InsertColumnsAndSources,
+    Target: G::InsertionTarget,
+    Values: G::InsertColumnsAndSources,
 {
     target: Target,
     values: Values,
 }
 
-impl<Target, ColsAndSrcs> grammar::Insert for Insert<Target, ColsAndSrcs>
+impl<Target, Values> H::Insert for Insert<Target, Values>
 where
     Target: InsertionTarget,
-    ColsAndSrcs: InsertColumnsAndSources,
+    Values: InsertColumnsAndSources,
 {
     type Target = Target;
-    type ColumnsAndSources = ColsAndSrcs;
+    type ColumnsAndSources = Values;
 
     fn transform_target<NewTarget: InsertionTarget>(
         self,

@@ -1,3 +1,6 @@
+use std::default;
+
+use itertools::Itertools;
 use phf::phf_map;
 
 pub struct SymbolDef {
@@ -22,6 +25,7 @@ impl SymbolDef {
         self.flags & WITH_BLANK_IMPL == WITH_BLANK_IMPL
     }
 
+    #[inline]
     pub fn with_helpers(&self) -> bool {
         self.flags & WITH_HELPERS == WITH_HELPERS
     }
@@ -30,8 +34,8 @@ impl SymbolDef {
 pub const WITH_BLANK_IMPL: u8 = 0b1;
 pub const WITH_HELPERS: u8 = 0b10;
 
-/// Defines the way how symbols are derived.
-static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
+/// Defines the symbols in the SQL grammar.
+pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "Asterisk" => SymbolDef::new(&[], 0),
 
     /*
@@ -146,7 +150,7 @@ static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         "UserDefinedTypeValueExpression",
         "ReferenceValueExpression",
         "CollectionValueExpression"
-    ], WITH_HELPERS),
+    ], 0),
 
     /*
         <numeric value expression>    ::=
@@ -724,183 +728,321 @@ static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <qualified identifier> ::= <identifier>
     */
     "QualifiedIdentifier" => SymbolDef::new(&["Identifier"], 0),
-
-    "Qualifier" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["ColumnReference", "SelectList"]
-    },
-    "Insert" => SymbolDef {
-        with_blank_impl: false,
-        deps: &[]
-    },
-    "InsertionTarget" => SymbolDef {
-        with_blank_impl: false,
-        deps: &[]
-    },
-    "InsertColumnsAndSources" => SymbolDef {
-        with_blank_impl: false,
-        deps: &[]
-    },
-    "FromSubQuery" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["InsertColumnsAndSources"]
-    },
-    "FromConstructor" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["InsertColumnsAndSources"]
-    },
-    "FromDefault" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["InsertColumnsAndSources"]
-    },
-    "ContextuallyTypedTableValueConstructor" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["FromConstructor"]
-    },
-    "ContextuallyTypedRowValueExpressionList" => SymbolDef {
-        with_blank_impl: false,
-        deps: &[]
-    },
-    "ContextuallyTypedRowValueExpression" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["ContextuallyTypedRowValueExpressionList"]
-    },
-    "ContextuallyTypedRowValueConstructor" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["ContextuallyTypedRowValueExpression"]
-    },
-    "ContextuallyTypedRowValueConstructorElementList" => SymbolDef {
-        with_blank_impl: false,
-        deps: &[
-            "ContextuallyTypedRowValueConstructor"
-        ]
-    },
-    "ContextuallyTypedRowValueConstructorElement" => SymbolDef {
-        with_blank_impl: false,
-        deps: &[
-            "ContextuallyTypedRowValueConstructor",
-            "ContextuallyTypedRowValueConstructorElementList"
-        ]
-    },
-       "ValueSpecification" => SymbolDef{
-        with_blank_impl: false,
-        deps: &["ValueExpressionPrimary"]
-    },
-    "Literal" => SymbolDef{
-        with_blank_impl: false,
-        deps: &["ValueSpecification"]
-    },
-    "SchemaName" => SymbolDef{
-        with_blank_impl: false,
-        deps: &[]
-    },
-    "UnqualifiedSchemaName" => SymbolDef{
-        with_blank_impl: false,
-        deps: &["SchemaName"]
-    },
-    "QualifiedName" => SymbolDef{
-        with_blank_impl: false,
-        deps: &["TableName"]
-    },
+    "Qualifier" => SymbolDef::new(&[], 0),
+    
+    "Insert" => SymbolDef::new(&[], 0),
+    "InsertionTarget" => SymbolDef::new(&[], 0),
+    "InsertColumnsAndSources" => SymbolDef::new(&[], 0),
+    "FromSubQuery" => SymbolDef::new(&[], 0),
+    "FromConstructor" => SymbolDef::new(&[], 0),
+    "FromDefault" => SymbolDef::new(&[], 0),
+    "ContextuallyTypedTableValueConstructor" => SymbolDef::new(&[], 0),
+    "ContextuallyTypedRowValueExpressionList" => SymbolDef::new(&[], 0),
+    "ContextuallyTypedRowValueExpression" => SymbolDef::new(&[], 0),
+    "ContextuallyTypedRowValueConstructor" => SymbolDef::new(&[], 0),
+    "ContextuallyTypedRowValueConstructorElementList" => SymbolDef::new(&[], 0),
+    "ContextuallyTypedRowValueConstructorElement" => SymbolDef::new(&[], 0),
+    "ValueSpecification" => SymbolDef::new(&[], 0),
+    "Literal" => SymbolDef::new(&[], 0),
+    "SchemaName" => SymbolDef::new(&[], 0),
+    "UnqualifiedSchemaName" => SymbolDef::new(&[], 0),
+    "QualifiedName" => SymbolDef::new(&[], 0),
 
     "BasicIdentifier" => SymbolDef::new(&["IdentifierChain"], 0),
     "IdentifierChain" => SymbolDef::new(&["Identifier"], WITH_HELPERS),
 
-    "Identifier" => SymbolDef{
-        with_blank_impl: false,
-        deps: &[
-            "QualifiedIdentifier",
-            "ColumnName"
-        ]
-    },
-    "SearchCondition" => SymbolDef {
-        with_blank_impl: false,
-        deps: &[]
-    },
-    "BooleanTerm" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["SearchCondition"]
-    },
-    "BooleanFactor" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["BooleanTerm"]
-    },
-    "BooleanTest" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["BooleanFactor"]
-    },
-    "BooleanPrimary" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["BooleanTest"]
-    },
+    "Identifier" => SymbolDef::new(&[], 0),
 
-    "Predicate" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["BooleanPrimary"]
-    },
+    /*
+        <search condition> ::= <boolean value expression>
+    */
+    "SearchCondition" => SymbolDef::new(&["BooleanValueExpression"], WITH_HELPERS),
+    /*
+        <boolean value expression> ::=
+            <boolean term>
+            | <boolean value expression> OR <boolean term>
+    */
+    "BooleanValueExpression" => SymbolDef::new(&["BooleanTerm"], 0),
+    /*
+        <boolean term> ::=
+            <boolean factor>
+            | <boolean term> AND <boolean factor>
+    */
+    "BooleanTerm" => SymbolDef::new(&["BooleanFactor"], 0),
+    /*
+        <boolean factor> ::= [ NOT ] <boolean test>
+    */
+    "BooleanFactor" => SymbolDef::new(&["BooleanTest"], 0),
+    /*
+        <boolean test> ::= <boolean primary> [ IS [ NOT ] <truth value> ] 
+    */
+    "BooleanTest" => SymbolDef::new(&["BooleanPrimary"], 0),
+    /*
+        <truth value>    ::=   TRUE | FALSE | UNKNOWN 
+    */
+    "TruthValue" => SymbolDef::new(&["TruthValue"], 0),
+    /*
+        <boolean primary> ::= 
+            <predicate> 
+            | <boolean predicand>
+    */
+    "BooleanPrimary" => SymbolDef::new(&[
+        "Predicate", 
+        "BooleanPredicand"
+    ], 0),
 
-    "ComparisonPredicate" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["Predicate"]
-    },
-    "BetweenPredicate" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["Predicate"]
-    },
-    "InPredicate" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["Predicate"]
-    },
-    "LikePredicate" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["Predicate"]
-    },
-    "NullPredicate" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["Predicate"]
-    },
-    "ExistsPredicate" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["Predicate"]
-    },
-    "MatchPredicate" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["Predicate"]
-    },
-    "OverlapsPredicate" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["Predicate"]
-    },
+    /*
+        <boolean predicand>    ::=
+            <parenthesized boolean value expression>
+            | <nonparenthesized value expression primary>
+    */
+    "BooleanPredicand" => SymbolDef::new(&[
+        "ParenthesizedBooleanValueExpression",
+        "NonparenthesizedValueExpressionPrimary"
+    ], 0),
 
-    "RowValueConstructor" => SymbolDef {
-        with_blank_impl: false,
-        deps: &[]
-    },
-    "RowValueConstructorList" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["RowValueConstructor"]
-    },
-    "RowValueConstructorElement" => SymbolDef {
-        with_blank_impl: false,
-        deps: &["RowValueConstructor", "RowValueConstructorList"]
-    },
+    /*
+        <parenthesized boolean value expression> ::= 
+            ( <boolean value expression> )
+    */
+    "ParenthesizedBooleanValueExpression" => SymbolDef::new(&[
+        "BooleanValueExpression"
+    ], 0),
+
+    /*
+        <predicate>    ::=
+            <comparison predicate>
+            | <between predicate>
+            | <in predicate>
+            | <like predicate>
+            | <similar predicate>
+            | <null predicate>
+            | <quantified comparison predicate>
+            | <exists predicate>
+            | <unique predicate>
+            | <normalized predicate>
+            | <match predicate>
+            | <overlaps predicate>
+            | <distinct predicate>
+            | <member predicate>
+            | <submultiset predicate>
+            | <set predicate>
+            | <type predicate>
+    */
+    "Predicate" => SymbolDef::new(&[
+        "ComparisonPredicate",
+        "BetweenPredicate",
+        "InPredicate",
+        "LikePredicate",
+        "SimilarPredicate",
+        "NullPredicate",
+        "QuantifiedComparisonPredicate",
+        "ExistsPredicate",
+        "UniquePredicate",
+        "NormalizedPredicate",
+        "MatchPredicate",
+        "OverlapsPredicate",
+        "DistinctPredicate",
+        "MemberPredicate",
+        "SubmultisetPredicate",
+        "SetPredicate",
+        "TypePredicate"
+    ], 0),
+
+    /*
+        <comparison predicate> ::= 
+            <row value predicand> 
+            <comparison predicate part 2>
+    */
+    "ComparisonPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <between predicate> ::= 
+            <row value predicand> 
+            <between predicate part 2>
+    */
+    "BetweenPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <in predicate> ::= 
+            <row value predicand> 
+            <in predicate part 2>
+    */
+    "InPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <like predicate> ::= 
+            <character like predicate> 
+            | <octet like predicate>
+    */
+    "LikePredicate" => SymbolDef::new(&[], 0),
+    /*
+        <similar predicate> ::= 
+            <row value predicand> 
+            <similar predicate part 2>
+    */
+    "SimilarPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <null predicate> ::= 
+            <row value predicand> 
+            <null predicate part 2>
+    */
+    "NullPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <quantified comparison predicate> ::= 
+            <row value predicand> 
+            <quantified comparison predicate part 2>
+    */
+    "QuantifiedComparisonPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <exists predicate> ::= EXISTS <table subquery>
+    */
+    "ExistsPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <unique predicate> ::= UNIQUE <table subquery>
+    */
+    "UniquePredicate" => SymbolDef::new(&[], 0),
+    /*
+        <normalized predicate> ::=
+            <string value expression> 
+            IS [ NOT ] NORMALIZED 
+    */
+    "NormalizedPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <match predicate> ::= 
+            <row value predicand> 
+            <match predicate part 2>
+    */
+    "MatchPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <overlaps predicate> ::= 
+            <overlaps predicate part 1> 
+            <overlaps predicate part 2>
+    */
+    "OverlapsPredicate" => SymbolDef::new(&[], 0),
+
+    /*
+        <distinct predicate> ::= 
+            <row value predicand 3> 
+            <distinct predicate part 2>
+    */
+    "DistinctPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <member predicate> ::= 
+            <row value predicand> 
+            <member predicate part 2>
+    */
+    "MemberPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <submultiset predicate> ::= 
+            <row value predicand> 
+            <submultiset predicate part 2>
+    */
+    "SubmultisetPredicate" => SymbolDef::new(&[], 0),
+    /*
+        <set predicate> ::= 
+            <row value predicand> 
+            <set predicate part 2>
+    */
+    "SetPredicate" => SymbolDef::new(&[], 0),
+
+    /*
+        <type predicate> ::= 
+            <row value predicand> 
+            <type predicate part 2>
+    */
+    "TypePredicate" => SymbolDef::new(&[], 0),
+
+    /*
+        <row value predicand>    ::=
+            <row value special case>
+            | <row value constructor predicand>
+    */
+    "RowValuePredicand" => SymbolDef::new(&[
+        "RowValueSpecialCase",
+        "RowValueConstructorPredicand"
+    ], 0),
+
+    /*
+        <row value special case> ::= 
+            <nonparenthesized value expression primary>
+    */
+    "RowValueSpecialCase" => SymbolDef::new(&[
+        "NonparenthesizedValueExpressionPrimary"
+    ], 0),
+
+    /*
+        <row value constructor predicand>    ::=
+            <common value expression>
+            | <boolean predicand>
+            | <explicit row value constructor>
+    */
+    "RowValueConstructorPredicand" => SymbolDef::new(&[
+        "CommonValueExpression",
+        "BooleanPredicand",
+        "ExplicitRowValueConstructor"
+    ], 0),
+
+    /*
+        <explicit row value constructor>    ::=
+            (<row value constructor element>, <row value constructor element list>)
+        | ROW <left paren> <row value constructor element list> <right paren>
+        | <row subquery>
+    */
+    "ExplicitRowValueConstructor" => SymbolDef::new(&["RowSubquery"], 0),
+    /*
+        <row subquery>    ::=   <subquery>
+    */
+    "RowSubquery" => SymbolDef::new(&["Subquery"], 0),
+    "RowValueConstructor" => SymbolDef::new(&[], 0),
+    "RowValueConstructorList" => SymbolDef::new(&[], 0),
+    "RowValueConstructorElement" => SymbolDef::new(&[], 0),
 
 };
 
-/// Fetch the dependents of the symbol. 
-pub fn fetch_deps(symbol: &str) -> Vec<&str> {
-    let mut stack = vec![symbol];
-    let mut symbols = Vec::<&'static str>::default();
-    while let Some(symbol) = stack.pop() {
-        if symbols.contains(&symbol) {
-            continue;
-        }
-        symbols.push(symbol);
+pub struct SymbolDependentsIterator<'s> {
+    stack: Vec::<&'s str>,
+}
 
-        stack.extend(SYMBOL_MAP.keys().find(move |key| {
-            let flags = &SYMBOL_MAP[**key];
-            flags.deps.contains(&symbol)
-        }));
+impl<'s> Iterator for SymbolDependentsIterator<'s> {
+    type Item = &'s str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(symbol) = self.stack.pop() {    
+            self.stack.extend(SYMBOL_MAP.keys().find(move |key| {
+                let flags = &SYMBOL_MAP[**key];
+                flags.deps.contains(&symbol)
+            }));          
+
+            return Some(symbol)
+        }
+
+        None
     }
-    symbols
+}
+
+/// Iterate over all dependents of the symbol.
+/// 
+/// The iterator does not prevent loops.
+pub fn iter_dependents<'s>(symbol: &'s str) -> impl Iterator<Item=&'s str> {
+    SymbolDependentsIterator {
+        stack: vec![symbol]
+    }
+}
+
+pub fn detect_loop<'s>(symbol: &'s str) -> Result<(), Vec<&'s str>> {
+    let mut acc = Vec::<&str>::default();
+
+    for el in iter_dependents(symbol) {
+        acc.push(el);
+
+        if el == symbol {
+            return Err(acc)
+        }
+    }
+
+    Ok(())
+}
+
+/// Fetch the dependents of the symbol. 
+pub fn fetch_deps(symbol: &str) -> impl Iterator<Item=&str> {
+    iter_dependents(symbol)
+    .dedup()
 }

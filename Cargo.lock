@@ -972,6 +972,7 @@ dependencies = [
 name = "sql-builder-def"
 version = "0.1.0"
 dependencies = [
+ "itertools",
  "phf",
 ]
 
@@ -985,12 +986,22 @@ dependencies = [
  "quote",
  "regex",
  "sql-builder-def",
+ "sql-builder-meta-macros",
  "syn 2.0.71",
 ]
 
 [[package]]
 name = "sql-builder-meta-macros"
 version = "0.1.0"
+dependencies = [
+ "itertools",
+ "paste",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "sql-builder-def",
+ "syn 2.0.71",
+]
 
 [[package]]
 name = "sqlformat"

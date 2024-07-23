@@ -1,10 +1,12 @@
-use sql_builder_macros::SelectList;
+use sql_builder_macros::{QuerySpecification, SelectList};
 
 use crate::{
     from_clause::From,
-    grammar::{self, SelectList, TableExpression, TableReferenceList},
     ToQuery,
 };
+
+use crate::grammar as G;
+use crate::helpers as H;
 
 /// The select quantifier, either ALL or DISTINCT.
 /// See [self::Select::distinct] or [self::Select::all]
@@ -29,7 +31,7 @@ pub enum SetQuantifier {
 /// let sql = sel.to_string().unwrap();
 /// assert_eq!(sql, "SELECT col1, col2 AS aliased_column, col3 FROM my_table");
 /// ```
-pub fn select<SeLs: grammar::SelectList>(select_list: SeLs) -> BeginSelect<SeLs> {
+pub fn select<SeLs: G::SelectList>(select_list: SeLs) -> BeginSelect<SeLs> {
     BeginSelect { select_list }
 }
 
@@ -39,16 +41,16 @@ pub fn select<SeLs: grammar::SelectList>(select_list: SeLs) -> BeginSelect<SeLs>
 /// See [self::select]
 pub struct BeginSelect<SeLs>
 where
-    SeLs: SelectList,
+    SeLs: G::SelectList,
 {
     select_list: SeLs,
 }
 
 impl<SeLs> BeginSelect<SeLs>
 where
-    SeLs: SelectList,
+    SeLs: G::SelectList,
 {
-    pub fn from<TabRefs: TableReferenceList>(
+    pub fn from<TabRefs: G::TableReferenceList>(
         self,
         table_refs: TabRefs,
     ) -> Select<SeLs, From<TabRefs>> {
@@ -60,27 +62,28 @@ where
     }
 }
 
+#[derive(QuerySpecification)]
 /// Represents a select statement.
 /// See [self::select]
 pub struct Select<SeLs, TabExpr>
 where
-    TabExpr: TableExpression,
-    SeLs: SelectList,
+    TabExpr: G::TableExpression,
+    SeLs: G::SelectList,
 {
     quantifier: Option<SetQuantifier>,
     select_list: SeLs,
     table_expression: TabExpr,
 }
 
-impl<SeLs, TabExpr> grammar::Select for Select<SeLs, TabExpr>
+impl<SeLs, TabExpr> H::QuerySpecification for Select<SeLs, TabExpr>
 where
-    SeLs: SelectList,
-    TabExpr: TableExpression,
+    SeLs: G::SelectList,
+    TabExpr: G::TableExpression,
 {
-    type TableExpr = TabExpr;
+    type TableExpression = TabExpr;
 
     #[inline]
-    fn distinct(self) -> impl grammar::Select {
+    fn distinct(self) -> impl G::QuerySpecification {
         Select {
             quantifier: Some(SetQuantifier::Distinct),
             select_list: self.select_list,
@@ -89,7 +92,7 @@ where
     }
 
     #[inline]
-    fn all(self) -> impl grammar::Select {
+    fn all(self) -> impl G::QuerySpecification {
         Select {
             quantifier: Some(SetQuantifier::All),
             select_list: self.select_list,
@@ -99,10 +102,10 @@ where
 
     fn transform_table_expression<NewTableExpr>(
         self,
-        transform: impl FnOnce(Self::TableExpr) -> NewTableExpr,
-    ) -> impl grammar::Select
+        transform: impl FnOnce(Self::TableExpression) -> NewTableExpr,
+    ) -> impl G::QuerySpecification
     where
-        NewTableExpr: TableExpression,
+        NewTableExpr: G::TableExpression,
     {
         Select {
             quantifier: self.quantifier,
@@ -114,8 +117,8 @@ where
 
 impl<SeLs, TabExpr> ToQuery for Select<SeLs, TabExpr>
 where
-    SeLs: SelectList,
-    TabExpr: TableExpression,
+    SeLs: G::SelectList,
+    TabExpr: G::TableExpression,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -153,9 +156,8 @@ impl ToQuery for All {
 #[cfg(test)]
 mod tests {
     use crate::{
-        grammar::{DerivedColumn, Select, SelectList},
         id,
-        select::select,
+        select,
         ToQuery as _,
     };
 

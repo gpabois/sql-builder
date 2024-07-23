@@ -30,6 +30,7 @@ pub mod insert;
 pub mod schema_name;
 pub mod search_condition;
 pub mod unqualified_schema_name;
+pub mod identifier_chain;
 
 use std::io::Write;
 
@@ -73,7 +74,9 @@ pub use select::select;
 pub use term::{div, mult};
 pub use where_clause::Where;
 
-pub use sql_builder_macros::id;
+pub use sql_builder_macros::{id, check_symbol_loops};
+
+check_symbol_loops!{}
 
 #[derive(Default)]
 /// Blank type for default symbol trait implementation.
@@ -91,11 +94,84 @@ impl ToQuery for Blank {
 
 pub mod helpers {
     use crate::grammar as G;
+    pub trait QuerySpecification {
+        type TableExpression: G::TableExpression;
+
+        /// Distinct values in the Select
+        fn distinct(self) -> impl G::QuerySpecification;
+    
+        fn all(self) -> impl G::QuerySpecification;
+    
+        fn transform_table_expression<NewTableExpr>(
+            self,
+            transform: impl FnOnce(Self::TableExpr) -> NewTableExpr,
+        ) -> impl G::QuerySpecification
+        where
+            NewTableExpr: G::TableExpression;
+    }
+
+    pub trait FromClause {
+        /// Add table references to the current from clause.
+        fn add_table_references(
+            self, 
+            table_refs: impl G::TableReferenceList
+        ) -> impl G::FromClause;
+    }
+
+    pub trait TableExpression {
+        type FromClause:  G::FromClause;
+        type WhereClause: G::WhereClause;
+    
+        fn transform_from<NewFromClause: G::FromClause>(
+            self,
+            transform: impl FnOnce(Self::FromClause) -> NewFromClause,
+        ) -> impl G::TableExpression;
+    
+        fn transform_where<NewWhereClause: G::WhereClause>(
+            self,
+            transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
+        ) -> impl G::TableExpression;
+
+    }
+
+    pub trait Insert {
+        type Target: G::InsertionTarget;
+        type ColumnsAndSources: G::InsertColumnsAndSources;
+
+        fn transform_target<NewTarget: G::InsertionTarget>(
+            self,
+            transform: impl FnOnce(Self::Target) -> NewTarget,
+        ) -> impl G::Insert;
+    
+        fn transform_columns_and_sources<NewColumnsAndSources: G::InsertColumnsAndSources>(
+            self,
+            transform: impl FnOnce(Self::ColumnsAndSources) -> NewColumnsAndSources,
+        ) -> impl G::Insert;
+    }
+
+    pub trait TableReferenceList {
+        fn add_table_reference(self, table_ref: impl G::TableReference) -> impl G::TableReferenceList;
+    }
+
+    pub trait IdentifierChain {
+        fn add_identifier(self, id: impl G::Identifier) -> impl G::IdentifierChain;
+    }
+
+    pub trait SearchCondition {
+        fn or(self, rhs: impl BooleanTerm) -> impl SearchCondition {
+            crate::or(self, rhs)
+        }
+    }
+
+    pub trait BooleanTerm {
+        fn and(self, rhs: impl G::BooleanFactor) -> impl G::BooleanTerm {
+            crate::and(self, rhs)
+        }
+    }
 }
 
 pub mod grammar {
     use sql_builder_macros::create_symbol_traits;
-
     create_symbol_traits! {}
 }
 
