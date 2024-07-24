@@ -1,9 +1,9 @@
 use sql_builder_macros::Term;
 
-use crate::{
-    grammar::{Factor, Term},
-    ToQuery,
-};
+use crate::ToQuery;
+
+use crate::grammar as G;
+use crate::helpers as H;
 
 enum TermOperandKind {
     Mult,
@@ -32,18 +32,25 @@ impl ToQuery for TermOperandKind {
 #[derive(Term)]
 pub struct TermOperand<Lhs, Rhs>
 where
-    Lhs: Term,
-    Rhs: Factor,
+    Lhs: G::Term,
+    Rhs: G::Factor,
 {
     lhs: Lhs,
     kind: TermOperandKind,
     rhs: Rhs,
 }
 
+impl<Lhs, Rhs> H::SelectSublist for TermOperand<Lhs, Rhs>
+where
+    Lhs: G::Term,
+    Rhs: G::Factor,
+{
+}
+
 impl<Lhs, Rhs> ToQuery for TermOperand<Lhs, Rhs>
 where
-    Lhs: Term,
-    Rhs: Factor,
+    Lhs: G::Term,
+    Rhs: G::Factor,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -59,7 +66,7 @@ where
 }
 
 #[inline]
-pub fn mult<Lhs, Rhs>(lhs: impl Term, rhs: impl Factor) -> impl Term {
+pub fn mult(lhs: impl G::Term, rhs: impl G::Factor) -> impl G::Term {
     TermOperand {
         lhs,
         rhs,
@@ -68,7 +75,7 @@ pub fn mult<Lhs, Rhs>(lhs: impl Term, rhs: impl Factor) -> impl Term {
 }
 
 #[inline]
-pub fn div<Lhs, Rhs>(lhs: impl Term, rhs: impl Factor) -> impl Term {
+pub fn div(lhs: impl G::Term, rhs: impl G::Factor) -> impl G::Term {
     TermOperand {
         lhs,
         rhs,

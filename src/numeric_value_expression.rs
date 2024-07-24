@@ -4,6 +4,8 @@ use crate::{
     grammar::{NumericValueExpression, Term},
     ToQuery,
 };
+use crate::grammar as G;
+use crate::helpers as H;
 
 enum ArithmOpKind {
     Add,
@@ -32,18 +34,24 @@ impl ToQuery for ArithmOpKind {
 #[derive(NumericValueExpression)]
 pub struct ArithmOperand<Lhs, Rhs>
 where
-    Lhs: NumericValueExpression,
-    Rhs: Term,
+    Lhs: G::NumericValueExpression,
+    Rhs: G::Term,
 {
     lhs: Lhs,
     rhs: Rhs,
     kind: ArithmOpKind,
 }
 
+impl<Lhs, Rhs> H::SelectSublist for ArithmOperand<Lhs, Rhs>
+where
+    Lhs: G::NumericValueExpression,
+    Rhs: G::Term,
+{}
+
 impl<Lhs, Rhs> ToQuery for ArithmOperand<Lhs, Rhs>
 where
-    Lhs: NumericValueExpression,
-    Rhs: Term,
+    Lhs: G::NumericValueExpression,
+    Rhs: G::Term,
 {
     fn write<W: std::io::Write>(
         &self,

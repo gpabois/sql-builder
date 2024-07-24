@@ -13,6 +13,11 @@ impl SymbolDef {
     }
 
     #[inline]
+    pub fn with_either_impl(&self) -> bool {
+        self.flags & WITH_EITHER_IMPL == WITH_EITHER_IMPL
+    }
+
+    #[inline]
     pub fn with_blank_impl(&self) -> bool {
         self.flags & WITH_BLANK_IMPL == WITH_BLANK_IMPL
     }
@@ -24,6 +29,7 @@ impl SymbolDef {
 }
 
 pub const WITH_BLANK_IMPL: u8 = 0b1;
+pub const WITH_EITHER_IMPL: u8 = 0b100;
 pub const WITH_HELPERS: u8 = 0b10;
 
 /// Defines the symbols in the SQL grammar.
@@ -48,16 +54,16 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             [ <having clause> ]
             [ <window clause> ]
     */
-    "TableExpression" => SymbolDef::new(&["FromClause"], WITH_HELPERS),
+    "TableExpression" => SymbolDef::new(&["FromClause"], WITH_HELPERS | WITH_EITHER_IMPL),
 
     /*
         <from clause> ::= FROM <table reference list>
     */
-    "FromClause" => SymbolDef::new(&[], WITH_HELPERS),
+    "FromClause" => SymbolDef::new(&[], WITH_HELPERS | WITH_BLANK_IMPL | WITH_EITHER_IMPL),
     /*
         <where clause> ::= WHERE <search condition>
     */
-    "WhereClause" => SymbolDef::new(&[], WITH_BLANK_IMPL),
+    "WhereClause" => SymbolDef::new(&[], WITH_BLANK_IMPL | WITH_EITHER_IMPL),
     /*
         <group by clause> ::= GROUP BY [ <set quantifier> ] <grouping element list>
     */
@@ -80,17 +86,25 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
 
     /*
         <select sublist> ::=
-            <derived column>
-            | <qualified asterisk>
-            | <select sublist> [ { <comma> <select sublist> }... ]
+            | <select sublist element>
+            | <select sublist> [ { <comma> <select sublist element> }... ]
 
         Difference with the ISO/IEC 9075-2:2003 :
         Recursive <select sublist> chaining.
     */
     "SelectSublist" => SymbolDef::new(&[
+        "SelectSublistElement",
+    ], WITH_BLANK_IMPL | WITH_HELPERS),
+    
+    /*
+        <select sublist element> ::= 
+            <derived column> 
+            | <qualified asterisk>
+     */
+    "SelectSublistElement" => SymbolDef::new(&[
         "DerivedColumn",
         "QualifiedAsterisk"
-    ], WITH_BLANK_IMPL),
+    ], 0),
 
     /*
         <qualified asterisk>    ::=
@@ -125,7 +139,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         "CommonValueExpression",
         "BooleanValueExpression",
         "RowValueExpression"
-    ], 0),
+    ], WITH_HELPERS),
 
     /*
         <common value expression>    ::=
@@ -167,7 +181,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             | <term> <asterisk> <factor>
             | <term> <solidus> <factor>
     */
-    "Term" => SymbolDef::new(&["NumericValueExpression"], 0),
+    "Term" => SymbolDef::new(&["Factor"], 0),
 
     /*
         <factor> ::= [ <sign> ] <numeric primary>
@@ -559,20 +573,19 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "HostIdentifier" => SymbolDef::new(&[], 0),
 
+    ///////////////////
+    // Literal       //
+    ///////////////////
     /*
         <unsigned literal> ::=
             <unsigned numeric literal>
             | <general literal>
     */
     "UnsignedLiteral" => SymbolDef::new(&[], 0),
-
     /*
-        <unsigned numeric literal> ::=
-            <exact numeric literal>
-            | <approximate numeric literal>
+        <literal> ::= <signed numeric literal> | <general literal>
     */
-    "UnsignedNumericLiteral" => SymbolDef::new(&[], 0),
-
+    "Literal" => SymbolDef::new(&[], 0),
     /*
         <general literal> ::=
             <character string literal>
@@ -585,21 +598,56 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "GeneralLiteral" => SymbolDef::new(&[], 0),
 
+
+    /*
+        <unsigned numeric literal> ::=
+            <exact numeric literal>
+            | <approximate numeric literal>
+    */
+    "UnsignedNumericLiteral" => SymbolDef::new(&[], 0),
+
+    ///////////////////////////
+    // Names and identifiers //
+    ///////////////////////////
+    
+    /*
+        <identifier> ::= <actual identifier>
+    */
+    "Identifier" => SymbolDef::new(&[], 0),
+
+    /*
+        <schema name> ::= 
+            [ <catalog name> <period> ] 
+            <unqualified schema name>
+    */
+    "SchemaName" => SymbolDef::new(&[], 0),
+
+    /*
+        <unqualified schema name> ::= <identifier>
+    */
+    "UnqualifiedSchemaName" => SymbolDef::new(&["Identifier"], 0),
+
+    /*
+        <basic identifier chain> ::= <identifier chain>
+    */
+    "BasicIdentifierChain" => SymbolDef::new(&["IdentifierChain"], 0),
+    /*
+        <identifier chain> ::= 
+            <identifier> [ { . <identifier> }... ] 
+    */
+    "IdentifierChain" => SymbolDef::new(&["Identifier"], WITH_HELPERS),
+
     /*
         <column reference> ::=
             <basic identifier chain>
             | MODULE <period> <qualified identifier> <period> <column name>
     */
-    "ColumnReference" => SymbolDef::new(&[
-        "BasicIdentifierChain"
-    ], 0),
+    "ColumnReference" => SymbolDef::new(&["BasicIdentifierChain"], 0),
 
     /*
         <column name> ::= <identifier>
     */
-    "ColumnName" => SymbolDef::new(&[
-        "Identifier"
-    ], 0),
+    "ColumnName" => SymbolDef::new(&["Identifier"], 0),
 
     /*
         <table reference list> ::= <table reference> [ { <comma> <table reference> }... ]
@@ -613,7 +661,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "TableReference" => SymbolDef::new(&[
         "TablePrimaryOrJoinedTable"
-    ], 0),
+    ], WITH_HELPERS),
 
     /*
         <table primary or joined table> ::=
@@ -738,15 +786,13 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "ContextuallyTypedRowValueConstructorElementList" => SymbolDef::new(&[], 0),
     "ContextuallyTypedRowValueConstructorElement" => SymbolDef::new(&[], 0),
     "ValueSpecification" => SymbolDef::new(&[], 0),
-    "Literal" => SymbolDef::new(&[], 0),
-    "SchemaName" => SymbolDef::new(&[], 0),
-    "UnqualifiedSchemaName" => SymbolDef::new(&[], 0),
+
+
+
     "QualifiedName" => SymbolDef::new(&[], 0),
 
-    "BasicIdentifier" => SymbolDef::new(&["IdentifierChain"], 0),
-    "IdentifierChain" => SymbolDef::new(&["Identifier"], WITH_HELPERS),
 
-    "Identifier" => SymbolDef::new(&[], 0),
+
 
     /*
         <search condition> ::= <boolean value expression>
@@ -986,6 +1032,12 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <row subquery> ::=   <subquery>
     */
     "RowSubquery" => SymbolDef::new(&["Subquery"], 0),
+    /*
+        <row value constructor>    ::=
+            <common value expression>
+            | <boolean value expression>
+            | <explicit row value constructor>
+    */
     "RowValueConstructor" => SymbolDef::new(&[
         "CommonValueExpression",
         "BooleanValueExpression",
@@ -994,7 +1046,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "RowValueConstructorList" => SymbolDef::new(&[], 0),
     "RowValueConstructorElement" => SymbolDef::new(&[], 0),
     "RowValueExpression" => SymbolDef::new(&[], 0),
-    "BasicIdentifierChain" => SymbolDef::new(&[], 0),
+
     "JoinedTable" => SymbolDef::new(&[], 0),
     "WindowFunction" => SymbolDef::new(&[], 0),
     "NonparenthesizedValueExpressionPrimary" => SymbolDef::new(&[], 0),
@@ -1018,9 +1070,6 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "MultisetElementReference" => SymbolDef::new(&[], 0),
     "RoutineInvocation" => SymbolDef::new(&[], 0),
     "NextValueExpression" => SymbolDef::new(&[], 0),
-
-
-
 };
 
 pub struct SymbolDependentsIterator<'s> {
@@ -1032,16 +1081,21 @@ impl<'s> Iterator for SymbolDependentsIterator<'s> {
     type Item = &'s str;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(symbol) = self.stack.pop() {
-            self.visited.push(symbol);
+        if let Some(symbol) = self.stack.pop() 
+        {
+            if !self.visited.contains(&symbol) 
+            {
+                self.stack.extend(
+                    SYMBOL_MAP
+                    .entries()
+                    .filter(move |(_, def)| {
+                        def.deps.contains(&symbol)
+                    })
+                    .map(|(key, _)| key)
+                );
+            } 
 
-            if !self.visited.contains(&symbol) {
-                self.stack.extend(SYMBOL_MAP.keys().find(move |key| {
-                    let flags = &SYMBOL_MAP[**key];
-                    flags.deps.contains(&symbol)
-                }));
-            }
-
+            self.visited.push(symbol);           
             return Some(symbol);
         }
 
@@ -1075,5 +1129,21 @@ pub fn detect_loop(symbol: &str) -> Result<(), Vec<&str>> {
 
 /// Fetch the dependents of the symbol.
 pub fn fetch_deps(symbol: &str) -> impl Iterator<Item = &str> {
-    iter_dependents(symbol).dedup()
+    iter_dependents(symbol)
+    .unique()
+    .filter(move |&dep| dep != symbol)
+}
+
+#[cfg(test)]
+mod tests {
+    use itertools::Itertools;
+
+    use crate::{fetch_deps, SYMBOL_MAP};
+
+    #[test]
+    fn test_from_clause_dependents() {
+        let deps = fetch_deps("FromClause").collect_vec();
+        let dep = "TableExpression";
+        assert!(deps.contains(&dep), "{:?}", deps)
+    }
 }

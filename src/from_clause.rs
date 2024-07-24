@@ -1,5 +1,6 @@
 use sql_builder_macros::FromClause;
 
+use crate::table_reference_list::TableReferenceListKernel;
 use crate::{either::Either, table_expression::TableExpr, Blank, ToQuery};
 
 use crate::grammar as G;
@@ -10,7 +11,7 @@ pub struct From<TabRefs>
 where
     TabRefs: G::TableReferenceList,
 {
-    pub(crate) table_refs: TabRefs,
+    table_refs: TabRefs,
 }
 
 impl<TabRefs> From<TabRefs>
@@ -26,13 +27,14 @@ impl<TabRefs> H::FromClause for From<TabRefs>
 where
     TabRefs: G::TableReferenceList,
 {
-    fn add_table_references<TabRef>(self, table_refs: TabRef) -> impl G::FromClause
-    where
-        TabRef: G::TableReference,
+    fn add_table_reference(self, table_ref: impl G::TableReference) 
+        -> impl G::FromClause
     {
-        From {
-            table_refs: self.table_refs.add_table_reference(table_refs),
-        }
+        let table_refs = self
+        .table_refs
+        .add_table_reference(table_ref);
+
+        From { table_refs }
     }
 }
 
@@ -43,11 +45,18 @@ where
     type FromClause = Self;
     type WhereClause = Blank;
 
-    fn transform_from<NewFromClause: G::FromClause>(
+    fn transform_from<NewFromClause>(
         self,
         transform: impl FnOnce(Self::FromClause) -> NewFromClause,
-    ) -> impl G::TableExpression {
-        transform(self)
+    ) -> impl G::TableExpression 
+        where NewFromClause: G::FromClause
+    {
+        TableExpr {
+            from_clause: transform(self),
+            where_clause: Blank,
+            group_by: Blank,
+            having: Blank
+        }
     }
 
     fn transform_where<NewWhereClause: G::WhereClause>(
@@ -56,9 +65,9 @@ where
     ) -> impl G::TableExpression {
         TableExpr {
             from_clause: self,
-            where_clause: transform(Blank()),
-            group_by: Blank(),
-            having: Blank(),
+            where_clause: transform(Blank),
+            group_by: Blank,
+            having: Blank,
         }
     }
 }
@@ -77,11 +86,11 @@ where
     }
 }
 
-impl<Lhs, Rhs> G::FromClause for Either<Lhs, Rhs>
-where
-    Lhs: G::FromClause,
-    Rhs: G::FromClause,
-{
+impl H::FromClause for Blank {
+    fn add_table_reference(self, table_ref: impl G::TableReference) -> impl G::FromClause {
+        let table_refs = table_ref.to_list();
+        From::new(table_refs)
+    }
 }
 
 impl<Lhs, Rhs> H::FromClause for Either<Lhs, Rhs>
@@ -89,19 +98,15 @@ where
     Lhs: G::FromClause,
     Rhs: G::FromClause,
 {
-    fn add_table_references(self, tab_refs: impl G::TableReferenceList) -> impl G::FromClause {
-        match self {
-            Either::Left(left) => Either::Left(left.add_table_references(tab_refs)),
-            Either::Right(right) => Either::Right(right.add_table_references(tab_refs)),
-        }
+    fn add_table_reference(self, table_refs: impl G::TableReference) -> impl G::FromClause {
+        self.apply_with_args(
+            table_refs,
+            |lhs, table_refs| lhs.add_table_reference(table_refs), 
+            |rhs, table_refs| rhs.add_table_reference(table_refs)
+        )
     }
 }
 
-impl H::FromClause for Blank {
-    fn add_table_references(self, table_refs: impl G::TableReferenceList) -> impl G::FromClause {
-        From::new(table_refs)
-    }
-}
 
 #[cfg(test)]
 mod test {
@@ -111,7 +116,7 @@ mod test {
     #[test]
     fn test_from_identifier() {
         let clause = From::new(id("my_table"));
-        let sql = clause.to_string().unwrap();
+        let sql = clause.to_raw_query().unwrap();
         assert_eq!(sql, "FROM my_table");
     }
 }

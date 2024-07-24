@@ -10,6 +10,23 @@ where
     Head: G::IdentifierChain,
     Tail: G::Identifier;
 
+
+impl<Head, Tail> IdentifierChain<Head, Tail>
+where
+    Head: G::IdentifierChain,
+    Tail: G::Identifier,
+{
+    pub fn new(head: Head, tail: Tail) -> Self {
+        Self(head, tail)
+    }
+}
+
+impl<Head, Tail> H::SelectSublist for IdentifierChain<Head, Tail>
+where
+    Head: G::IdentifierChain,
+    Tail: G::Identifier
+{}
+
 impl<Head, Tail> H::IdentifierChain for IdentifierChain<Head, Tail>
 where
     Head: G::IdentifierChain,

@@ -1,18 +1,21 @@
 use sql_builder_macros::BooleanFactor;
 
-use crate::{
-    grammar::{self, BooleanFactor, BooleanTest},
-    ToQuery,
-};
+use crate::ToQuery;
+
+use crate::helpers as H;
+use crate::grammar as G;
 
 #[derive(BooleanFactor)]
-pub struct Not<BoolTest>(pub(crate) BoolTest)
+pub struct Not<BoolTest>(BoolTest)
 where
-    BoolTest: grammar::BooleanTest;
+    BoolTest: G::BooleanTest;
+
+impl<Test> H::SelectSublist for Not<Test> where Test: G::BooleanTest {}
+impl<Test> H::SearchCondition for Not<Test> where Test: G::BooleanTest {}
 
 impl<BoolTest> ToQuery for Not<BoolTest>
 where
-    BoolTest: grammar::BooleanTest,
+    BoolTest: G::BooleanTest,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -25,6 +28,6 @@ where
 }
 
 #[inline]
-pub fn not(value: impl BooleanTest) -> impl BooleanFactor {
+pub fn not(value: impl G::BooleanTest) -> impl G::BooleanFactor {
     Not(value)
 }

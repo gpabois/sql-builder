@@ -3,7 +3,7 @@ pub mod error;
 pub mod group_by;
 pub mod name;
 pub mod select;
-pub mod select_list;
+pub mod select_sublist;
 pub mod table_expression;
 pub mod table_reference_list;
 
@@ -25,12 +25,15 @@ pub mod comparison_predicate;
 pub mod contextually_typed_row_value_constructor_element_list;
 pub mod contextually_typed_row_value_expression_list;
 pub mod either;
-pub mod having;
+pub mod having_clause;
 pub mod identifier_chain;
 pub mod insert;
 pub mod schema_name;
 pub mod search_condition;
 pub mod unqualified_schema_name;
+pub mod blank;
+pub mod asterisk;
+pub mod truth_value;
 
 use std::io::Write;
 
@@ -52,16 +55,7 @@ pub trait ToQuery {
     ) -> Result<(), std::io::Error>;
 }
 
-impl ToQuery for () {
-    fn write<W: Write>(
-        &self,
-        _stream: &mut W,
-        _ctx: &mut ToQueryContext,
-    ) -> Result<(), std::io::Error> {
-        Ok(())
-    }
-}
-
+pub use blank::Blank;
 pub use boolean_factor::not;
 pub use boolean_term::and;
 pub use boolean_test::{is_not_truth_value, is_truth_value};
@@ -71,29 +65,16 @@ pub use literal::lit;
 pub use numeric_value_expression::{add, sub};
 pub use search_condition::or;
 pub use select::select;
+use sql_builder_macros::Blank;
 pub use term::{div, mult};
 pub use where_clause::Where;
 
 pub use sql_builder_macros::{check_symbol_loops, id};
 
-check_symbol_loops!();
-
-#[derive(Default)]
-/// Blank type for default symbol trait implementation.
-pub struct Blank();
-
-impl ToQuery for Blank {
-    fn write<W: Write>(
-        &self,
-        _stream: &mut W,
-        _ctx: &mut ToQueryContext,
-    ) -> Result<(), std::io::Error> {
-        Ok(())
-    }
-}
+// check_symbol_loops!();
 
 pub mod helpers {
-    use crate::grammar as G;
+    use crate::{boolean_primary::NestedSearchCondition, grammar as G, select_sublist::SelectLink, table_reference_list::TableReferenceListKernel};
     pub trait QuerySpecification {
         type TableExpression: G::TableExpression;
 
@@ -111,9 +92,8 @@ pub mod helpers {
     }
 
     pub trait FromClause {
-        /// Add table references to the current from clause.
-        fn add_table_references(self, table_refs: impl G::TableReferenceList)
-            -> impl G::FromClause;
+        /// Add a table reference to the current from clause.
+        fn add_table_reference(self, table_refs: impl G::TableReference) -> impl G::FromClause;
     }
 
     pub trait TableExpression {
@@ -131,6 +111,20 @@ pub mod helpers {
         ) -> impl G::TableExpression;
     }
 
+    pub trait SelectSublist {
+        fn add_selection(self, element: impl G::SelectSublistElement) -> impl G::SelectSublist 
+            where Self: G::SelectSublist {
+                SelectLink::new(self, element)
+        }
+    }
+
+    pub trait ValueExpression {
+        /// Alias the column.
+        fn alias_column(self, id: impl G::ColumnName) -> impl G::DerivedColumn {
+
+        }
+    }
+
     pub trait Insert {
         type Target: G::InsertionTarget;
         type ColumnsAndSources: G::InsertColumnsAndSources;
@@ -145,24 +139,33 @@ pub mod helpers {
             transform: impl FnOnce(Self::ColumnsAndSources) -> NewColumnsAndSources,
         ) -> impl G::Insert;
     }
-
     pub trait TableReferenceList {
         fn add_table_reference(
             self,
             table_ref: impl G::TableReference,
-        ) -> impl G::TableReferenceList
-        where
-            Self: G::TableReferenceList;
+        ) -> impl G::TableReferenceList;
     }
-
+    pub trait TableReference: Sized {
+        /// Turn a table reference into a table reference list.
+        fn to_list(self) -> impl G::TableReferenceList 
+        where Self: G::TableReference
+        {
+            TableReferenceListKernel::new(self)
+        }
+    }
     pub trait IdentifierChain {
         fn add_identifier(self, id: impl G::Identifier) -> impl G::IdentifierChain;
     }
-
     pub trait SearchCondition
     where
         Self: Sized,
     {
+        fn nest(self) -> impl G::BooleanPrimary 
+        where Self: G::SearchCondition
+        {
+            NestedSearchCondition::new(self)
+        }
+
         fn or(self, rhs: impl G::BooleanTerm) -> impl G::SearchCondition
         where
             Self: G::SearchCondition,

@@ -1,10 +1,10 @@
-use crate::{grammar::GroupByClause, Blank, ToQuery};
+use sql_builder_macros::GroupByClause;
 
+use crate::ToQuery;
+
+
+#[derive(GroupByClause)]
 pub struct GroupBy();
-
-impl GroupByClause for GroupBy {
-    const IS_IMPL: bool = true;
-}
 
 impl ToQuery for GroupBy {
     fn write<W: std::io::prelude::Write>(
@@ -15,8 +15,4 @@ impl ToQuery for GroupBy {
         write!(stream, "GROUP BY ")?;
         todo!("implement ToQuery for GroupBy")
     }
-}
-
-impl GroupByClause for Blank {
-    const IS_IMPL: bool = false;
 }

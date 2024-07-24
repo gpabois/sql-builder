@@ -47,10 +47,12 @@ impl<SeLs> BeginSelect<SeLs>
 where
     SeLs: G::SelectList,
 {
-    pub fn from<TabRefs: G::TableReferenceList>(
+    pub fn from<TabRefs>(
         self,
         table_refs: TabRefs,
-    ) -> Select<SeLs, From<TabRefs>> {
+    ) -> impl G::QuerySpecification 
+    where TabRefs: G::TableReferenceList
+    {
         Select {
             quantifier: None,
             select_list: self.select_list,
@@ -136,33 +138,20 @@ where
     }
 }
 
-#[derive(Clone, Copy, SelectList)]
-/// Wildcard (*)
-pub struct All {}
-pub const ALL: All = All {};
-impl ToQuery for All {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "*")
-    }
-}
 
 #[cfg(test)]
 mod tests {
-    use crate::{id, select, ToQuery as _};
+    use crate::{helpers::SelectSublist, id, select, ToQuery as _};
 
     #[test]
     fn test_select_basic() {
         let selected_columns = id("col1")
-            .append(id("col2").alias(id("aliased_column")))
-            .append(id("col3"));
+            .add_selection(id("col2"))
+            .add_selection(id("col3"));
 
         let stmt = select(selected_columns).from(id("my_table"));
 
-        let sql = stmt.to_string().unwrap();
+        let sql = stmt.to_raw_query().unwrap();
         assert_eq!(
             sql,
             "SELECT col1, col2 AS aliased_column, col3 FROM my_table"

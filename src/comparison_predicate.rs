@@ -1,9 +1,8 @@
 use sql_builder_macros::ComparisonPredicate;
 
-use crate::{
-    grammar::{ComparisonPredicate, RowValueConstructor},
-    ToQuery,
-};
+use crate::ToQuery;
+use crate::grammar as G;
+use crate::helpers as H;
 
 enum ComparisonKind {
     Equals,
@@ -40,18 +39,30 @@ impl ToQuery for ComparisonKind {
 #[derive(ComparisonPredicate)]
 pub struct Compare<Lhs, Rhs>
 where
-    Lhs: RowValueConstructor,
-    Rhs: RowValueConstructor,
+    Lhs: G::RowValueConstructor,
+    Rhs: G::RowValueConstructor,
 {
     lhs: Lhs,
-    op: ComparisonKind,
     rhs: Rhs,
+    op: ComparisonKind,
 }
+
+impl<Lhs, Rhs> H::SelectSublist for Compare<Lhs, Rhs> 
+where
+    Lhs: G::RowValueConstructor,
+    Rhs: G::RowValueConstructor,
+{}
+
+impl<Lhs, Rhs> H::SearchCondition for Compare<Lhs, Rhs> 
+where
+    Lhs: G::RowValueConstructor,
+    Rhs: G::RowValueConstructor,
+{}
 
 impl<Lhs, Rhs> ToQuery for Compare<Lhs, Rhs>
 where
-    Lhs: RowValueConstructor,
-    Rhs: RowValueConstructor,
+    Lhs: G::RowValueConstructor,
+    Rhs: G::RowValueConstructor,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -72,10 +83,10 @@ where
 /// ```sql
 /// <lhs> = <rhs>
 /// ```
-pub fn eq(
-    lhs: impl RowValueConstructor,
-    rhs: impl RowValueConstructor,
-) -> impl ComparisonPredicate {
+pub fn eq<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> impl G::ComparisonPredicate
+    where Lhs: G::RowValueConstructor,
+            Rhs: G::RowValueConstructor
+{
     Compare {
         lhs,
         rhs,
@@ -91,9 +102,9 @@ pub fn eq(
 /// <lhs> <> <rhs>
 /// ```
 pub fn neq(
-    lhs: impl RowValueConstructor,
-    rhs: impl RowValueConstructor,
-) -> impl ComparisonPredicate {
+    lhs: impl G::RowValueConstructor,
+    rhs: impl G::RowValueConstructor,
+) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
         rhs,
@@ -103,9 +114,9 @@ pub fn neq(
 
 #[inline]
 pub fn lt(
-    lhs: impl RowValueConstructor,
-    rhs: impl RowValueConstructor,
-) -> impl ComparisonPredicate {
+    lhs: impl G::RowValueConstructor,
+    rhs: impl G::RowValueConstructor,
+) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
         rhs,
@@ -115,9 +126,9 @@ pub fn lt(
 
 #[inline]
 pub fn lte(
-    lhs: impl RowValueConstructor,
-    rhs: impl RowValueConstructor,
-) -> impl ComparisonPredicate {
+    lhs: impl G::RowValueConstructor,
+    rhs: impl G::RowValueConstructor,
+) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
         rhs,
@@ -127,9 +138,9 @@ pub fn lte(
 
 #[inline]
 pub fn gt(
-    lhs: impl RowValueConstructor,
-    rhs: impl RowValueConstructor,
-) -> impl ComparisonPredicate {
+    lhs: impl G::RowValueConstructor,
+    rhs: impl G::RowValueConstructor,
+) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
         rhs,
@@ -139,9 +150,9 @@ pub fn gt(
 
 #[inline]
 pub fn gte(
-    lhs: impl RowValueConstructor,
-    rhs: impl RowValueConstructor,
-) -> impl ComparisonPredicate {
+    lhs: impl G::RowValueConstructor,
+    rhs: impl G::RowValueConstructor,
+) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
         rhs,

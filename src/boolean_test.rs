@@ -1,24 +1,36 @@
 use sql_builder_macros::BooleanTest;
 
-use crate::{
-    grammar::{self, BooleanPrimary, BooleanTest, TruthValue},
-    ToQuery,
-};
+use crate::ToQuery;
+
+use crate::grammar as G;
+use crate::helpers as H;
 
 #[derive(BooleanTest)]
-pub struct IsTruthValue<BoolPrimary, TruthValue>
+pub struct IsTruthValue<Primary, Truth>
 where
-    BoolPrimary: grammar::BooleanPrimary,
-    TruthValue: grammar::TruthValue,
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
 {
-    pub(crate) lhs: BoolPrimary,
-    pub(crate) rhs: TruthValue,
+    lhs: Primary,
+    rhs: Truth,
 }
 
-impl<BoolPrimary, TruthValue> ToQuery for IsTruthValue<BoolPrimary, TruthValue>
+impl<Primary, Truth> H::SearchCondition for IsTruthValue<Primary, Truth>
 where
-    BoolPrimary: grammar::BooleanPrimary,
-    TruthValue: grammar::TruthValue,
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
+{}
+
+impl<Primary, Truth> H::SelectSublist for IsTruthValue<Primary, Truth>
+where
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
+{}
+
+impl<Primary, Truth> ToQuery for IsTruthValue<Primary, Truth>
+where
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -32,19 +44,32 @@ where
 }
 
 #[derive(BooleanTest)]
-pub struct IsNotTruthValue<BoolPrimary, TruthValue>
+pub struct IsNotTruthValue<Primary, Truth>
 where
-    BoolPrimary: grammar::BooleanPrimary,
-    TruthValue: grammar::TruthValue,
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
 {
-    pub(crate) lhs: BoolPrimary,
-    pub(crate) rhs: TruthValue,
+    lhs: Primary,
+    rhs: Truth,
 }
 
-impl<BoolPrimary, TruthValue> ToQuery for IsNotTruthValue<BoolPrimary, TruthValue>
+impl<Primary, Truth> H::SelectSublist for IsNotTruthValue<Primary, Truth>
 where
-    BoolPrimary: grammar::BooleanPrimary,
-    TruthValue: grammar::TruthValue,
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
+{}
+
+impl<Primary, Truth> H::SearchCondition for IsNotTruthValue<Primary, Truth>
+where
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
+{}
+
+
+impl<Primary, Truth> ToQuery for IsNotTruthValue<Primary, Truth>
+where
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -58,11 +83,11 @@ where
 }
 
 #[inline]
-pub fn is_truth_value(lhs: impl BooleanPrimary, rhs: impl TruthValue) -> impl BooleanTest {
+pub fn is_truth_value(lhs: impl G::BooleanPrimary, rhs: impl G::TruthValue) -> impl G::BooleanTest {
     IsTruthValue { lhs, rhs }
 }
 
 #[inline]
-pub fn is_not_truth_value(lhs: impl BooleanPrimary, rhs: impl TruthValue) -> impl BooleanTest {
+pub fn is_not_truth_value(lhs: impl G::BooleanPrimary, rhs: impl G::TruthValue) -> impl G::BooleanTest {
     IsNotTruthValue { lhs, rhs }
 }

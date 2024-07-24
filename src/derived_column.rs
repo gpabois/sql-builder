@@ -1,20 +1,30 @@
 use crate::{grammar, ToQuery};
 use sql_builder_macros::DerivedColumn;
 
+use crate::helpers as H;
+use crate::grammar as G;
+
 #[derive(DerivedColumn)]
-pub struct DerivedColumn<ValueExpr, ColName>
+pub struct AliasedColumn<Value, Name>
 where
-    ValueExpr: grammar::ValueExpression,
-    ColName: grammar::ColumnName,
+    Value: G::ValueExpression,
+    Name: G::ColumnName,
 {
-    pub(crate) value_expression: ValueExpr,
-    pub(crate) alias: ColName,
+    pub(crate) value_expression: Value,
+    pub(crate) alias: Name,
 }
 
-impl<ValueExpr, ColName> ToQuery for DerivedColumn<ValueExpr, ColName>
+impl<Value, Name> H::SelectSublist for AliasedColumn<Value, Name>
 where
-    ValueExpr: grammar::ValueExpression,
-    ColName: grammar::ColumnName,
+    Value: G::ValueExpression,
+    Name: G::ColumnName,
+{
+}
+
+impl<Value, Name> ToQuery for AliasedColumn<Value, Name>
+where
+    Value: G::ValueExpression,
+    Name: G::ColumnName,
 {
     fn write<W: std::io::Write>(
         &self,

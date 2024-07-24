@@ -3,6 +3,7 @@ use sql_builder_macros::BooleanTerm;
 use crate::ToQuery;
 
 use crate::grammar as G;
+use crate::helpers as H;
 
 #[derive(BooleanTerm)]
 pub struct And<Lhs, Rhs>
@@ -13,6 +14,18 @@ where
     lhs: Lhs,
     rhs: Rhs,
 }
+
+impl<Lhs, Rhs> H::SelectSublist for And<Lhs, Rhs> 
+where
+    Lhs: G::BooleanTerm,
+    Rhs: G::BooleanFactor,
+{}
+
+impl<Lhs, Rhs> H::SearchCondition for And<Lhs, Rhs> 
+where
+    Lhs: G::BooleanTerm,
+    Rhs: G::BooleanFactor,
+{}
 
 impl<Lhs, Rhs> ToQuery for And<Lhs, Rhs>
 where
@@ -41,11 +54,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{and, eq, id, lit, neq, ToQuery as _};
+    use crate::{and, eq, id, neq};
 
     #[test]
     pub fn test_and() {
-        let cond1 = eq(id("a"), lit("b"));
+        let cond1 = eq(id("a"), id("b"));
         let cond2 = neq(id("c"), id("d"));
 
         let term = and(cond1, cond2);
