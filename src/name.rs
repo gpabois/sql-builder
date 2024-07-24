@@ -1,4 +1,4 @@
-use sql_builder_macros::{QualifiedName, UnqualifiedSchemaName};
+use sql_builder_macros::QualifiedName;
 
 use crate::{grammar, identifier::Identifier, ToQuery};
 #[derive(QualifiedName)]

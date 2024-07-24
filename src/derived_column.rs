@@ -1,8 +1,8 @@
-use crate::{grammar, ToQuery};
+use crate::ToQuery;
 use sql_builder_macros::DerivedColumn;
 
-use crate::helpers as H;
 use crate::grammar as G;
+use crate::helpers as H;
 
 #[derive(DerivedColumn)]
 pub struct AliasedColumn<Value, Name>
@@ -10,8 +10,21 @@ where
     Value: G::ValueExpression,
     Name: G::ColumnName,
 {
-    pub(crate) value_expression: Value,
-    pub(crate) alias: Name,
+    value_expression: Value,
+    alias: Name,
+}
+
+impl<Value, Name> AliasedColumn<Value, Name>
+where
+    Value: G::ValueExpression,
+    Name: G::ColumnName,
+{
+    pub fn new(value_expression: Value, alias: Name) -> Self {
+        Self {
+            value_expression,
+            alias,
+        }
+    }
 }
 
 impl<Value, Name> H::SelectSublist for AliasedColumn<Value, Name>

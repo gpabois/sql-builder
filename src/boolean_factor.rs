@@ -2,14 +2,15 @@ use sql_builder_macros::BooleanFactor;
 
 use crate::ToQuery;
 
-use crate::helpers as H;
 use crate::grammar as G;
+use crate::helpers as H;
 
 #[derive(BooleanFactor)]
 pub struct Not<BoolTest>(BoolTest)
 where
     BoolTest: G::BooleanTest;
 
+impl<Test> H::ValueExpression for Not<Test> where Test: G::BooleanTest {}
 impl<Test> H::SelectSublist for Not<Test> where Test: G::BooleanTest {}
 impl<Test> H::SearchCondition for Not<Test> where Test: G::BooleanTest {}
 

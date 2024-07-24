@@ -1,11 +1,11 @@
 use sql_builder_macros::NumericValueExpression;
 
+use crate::grammar as G;
+use crate::helpers as H;
 use crate::{
     grammar::{NumericValueExpression, Term},
     ToQuery,
 };
-use crate::grammar as G;
-use crate::helpers as H;
 
 enum ArithmOpKind {
     Add,
@@ -42,11 +42,19 @@ where
     kind: ArithmOpKind,
 }
 
+impl<Lhs, Rhs> H::ValueExpression for ArithmOperand<Lhs, Rhs>
+where
+    Lhs: G::NumericValueExpression,
+    Rhs: G::Term,
+{
+}
+
 impl<Lhs, Rhs> H::SelectSublist for ArithmOperand<Lhs, Rhs>
 where
     Lhs: G::NumericValueExpression,
     Rhs: G::Term,
-{}
+{
+}
 
 impl<Lhs, Rhs> ToQuery for ArithmOperand<Lhs, Rhs>
 where

@@ -1,20 +1,23 @@
 use sql_builder_macros::BooleanPrimary;
 
-use crate::{grammar::SearchCondition, ToQuery};
 use crate::grammar as G;
 use crate::helpers as H;
+use crate::{grammar::SearchCondition, ToQuery};
 
 #[derive(BooleanPrimary)]
 pub struct NestedSearchCondition<Cond>(pub(crate) Cond)
 where
     Cond: G::SearchCondition;
 
-impl<Cond> NestedSearchCondition<Cond> where Cond: G::SearchCondition {
+impl<Cond> NestedSearchCondition<Cond>
+where
+    Cond: G::SearchCondition,
+{
     pub fn new(cond: Cond) -> Self {
         Self(cond)
     }
 }
-
+impl<Cond> H::ValueExpression for NestedSearchCondition<Cond> where Cond: G::SearchCondition {}
 impl<Cond> H::SelectSublist for NestedSearchCondition<Cond> where Cond: G::SearchCondition {}
 impl<Cond> H::SearchCondition for NestedSearchCondition<Cond> where Cond: G::SearchCondition {}
 
@@ -32,4 +35,3 @@ where
         write!(stream, ")")
     }
 }
-

@@ -14,3 +14,4 @@ impl ToQuery for Asterisk {
         write!(stream, "*")
     }
 }
+

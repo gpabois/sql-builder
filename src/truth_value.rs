@@ -9,7 +9,7 @@ impl ToQuery for True {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        _ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
         write!(stream, "TRUE")
     }
@@ -22,7 +22,7 @@ impl ToQuery for False {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        _ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
         write!(stream, "FALSE")
     }
@@ -33,10 +33,11 @@ pub struct Unknown;
 
 impl ToQuery for Unknown {
     fn write<W: std::io::Write>(
-            &self,
-            stream: &mut W,
-            ctx: &mut crate::ToQueryContext,
-        ) -> Result<(), std::io::Error> {
+        &self,
+        stream: &mut W,
+        _ctx: &mut crate::ToQueryContext,
+    ) -> Result<(), std::io::Error> {
         write!(stream, "UNKNOWN")
     }
 }
+

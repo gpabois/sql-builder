@@ -95,10 +95,10 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "SelectSublist" => SymbolDef::new(&[
         "SelectSublistElement",
     ], WITH_BLANK_IMPL | WITH_HELPERS),
-    
+
     /*
-        <select sublist element> ::= 
-            <derived column> 
+        <select sublist element> ::=
+            <derived column>
             | <qualified asterisk>
      */
     "SelectSublistElement" => SymbolDef::new(&[
@@ -609,15 +609,15 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     ///////////////////////////
     // Names and identifiers //
     ///////////////////////////
-    
+
     /*
         <identifier> ::= <actual identifier>
     */
     "Identifier" => SymbolDef::new(&[], 0),
 
     /*
-        <schema name> ::= 
-            [ <catalog name> <period> ] 
+        <schema name> ::=
+            [ <catalog name> <period> ]
             <unqualified schema name>
     */
     "SchemaName" => SymbolDef::new(&[], 0),
@@ -632,8 +632,8 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "BasicIdentifierChain" => SymbolDef::new(&["IdentifierChain"], 0),
     /*
-        <identifier chain> ::= 
-            <identifier> [ { . <identifier> }... ] 
+        <identifier chain> ::=
+            <identifier> [ { . <identifier> }... ]
     */
     "IdentifierChain" => SymbolDef::new(&["Identifier"], WITH_HELPERS),
 
@@ -821,7 +821,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     /*
         <truth value>    ::=   TRUE | FALSE | UNKNOWN
     */
-    "TruthValue" => SymbolDef::new(&["TruthValue"], 0),
+    "TruthValue" => SymbolDef::new(&[], 0),
     /*
         <boolean primary> ::=
             <predicate>
@@ -846,9 +846,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <parenthesized boolean value expression> ::=
             ( <boolean value expression> )
     */
-    "ParenthesizedBooleanValueExpression" => SymbolDef::new(&[
-        "BooleanValueExpression"
-    ], 0),
+    "ParenthesizedBooleanValueExpression" => SymbolDef::new(&[], 0),
 
     /*
         <predicate>    ::=
@@ -1081,21 +1079,17 @@ impl<'s> Iterator for SymbolDependentsIterator<'s> {
     type Item = &'s str;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(symbol) = self.stack.pop() 
-        {
-            if !self.visited.contains(&symbol) 
-            {
+        if let Some(symbol) = self.stack.pop() {
+            if !self.visited.contains(&symbol) {
                 self.stack.extend(
                     SYMBOL_MAP
-                    .entries()
-                    .filter(move |(_, def)| {
-                        def.deps.contains(&symbol)
-                    })
-                    .map(|(key, _)| key)
+                        .entries()
+                        .filter(move |(_, def)| def.deps.contains(&symbol))
+                        .map(|(key, _)| key),
                 );
-            } 
+            }
 
-            self.visited.push(symbol);           
+            self.visited.push(symbol);
             return Some(symbol);
         }
 
@@ -1114,7 +1108,7 @@ pub fn iter_dependents(symbol: &str) -> impl Iterator<Item = &'_ str> {
 }
 
 pub fn detect_loop(symbol: &str) -> Result<(), Vec<&str>> {
-    let mut acc = Vec::<&str>::default();
+    let mut acc = vec![symbol];
 
     for el in iter_dependents(symbol).dropping(1) {
         acc.push(el);
@@ -1130,15 +1124,15 @@ pub fn detect_loop(symbol: &str) -> Result<(), Vec<&str>> {
 /// Fetch the dependents of the symbol.
 pub fn fetch_deps(symbol: &str) -> impl Iterator<Item = &str> {
     iter_dependents(symbol)
-    .unique()
-    .filter(move |&dep| dep != symbol)
+        .unique()
+        .filter(move |&dep| dep != symbol)
 }
 
 #[cfg(test)]
 mod tests {
     use itertools::Itertools;
 
-    use crate::{fetch_deps, SYMBOL_MAP};
+    use crate::fetch_deps;
 
     #[test]
     fn test_from_clause_dependents() {

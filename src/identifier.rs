@@ -1,19 +1,20 @@
-use crate::{error::Error, identifier_chain::IdentifierChain, table_reference_list::TableReferenceLink, ToQuery};
-use regex::Regex;
-use crate::helpers as H;
 use crate::grammar as G;
+use crate::helpers as H;
+use crate::{
+    error::Error, identifier_chain::IdentifierChain, table_reference_list::TableReferenceLink,
+    ToQuery,
+};
+use regex::Regex;
 use sql_builder_macros::Identifier;
 
 #[derive(Clone, Identifier)]
 pub struct Identifier(String);
 
+impl H::ValueExpression for Identifier {}
 impl H::SelectSublist for Identifier {}
 impl H::TableReference for Identifier {}
 impl H::TableReferenceList for Identifier {
-    fn add_table_reference(
-        self,
-        table_ref: impl G::TableReference,
-    ) -> impl G::TableReferenceList {
+    fn add_table_reference(self, table_ref: impl G::TableReference) -> impl G::TableReferenceList {
         TableReferenceLink::new(self, table_ref)
     }
 }

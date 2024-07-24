@@ -1,6 +1,6 @@
-use std::io::Write;
-use sql_builder_macros::Blank;
 use crate::{ToQuery, ToQueryContext};
+use sql_builder_macros::Blank;
+use std::io::Write;
 
 #[derive(Blank)]
 /// Blank type for default symbol trait implementation.

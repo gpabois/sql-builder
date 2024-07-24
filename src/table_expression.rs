@@ -2,7 +2,7 @@ use sql_builder_macros::TableExpression;
 
 use crate::{
     either::Either,
-    grammar::{FromClause, GroupByClause, HavingClause, TableExpression, WhereClause},
+    grammar::{FromClause, TableExpression, WhereClause},
     Blank, ToQuery,
 };
 
@@ -131,16 +131,13 @@ where
     fn transform_from<NewFromClause: FromClause>(
         self,
         transform: impl FnOnce(Self::FromClause) -> NewFromClause,
-    ) -> impl G::TableExpression 
-    {
+    ) -> impl G::TableExpression {
         match self {
             Either::Left(lhs) => {
                 Either::Left(lhs.transform_from(|from_clause| transform(Either::Left(from_clause))))
             }
             Either::Right(rhs) => Either::Right(
-                rhs.transform_from(|from_clause| 
-                    transform(Either::Right(from_clause))
-                ),
+                rhs.transform_from(|from_clause| transform(Either::Right(from_clause))),
             ),
         }
     }

@@ -10,7 +10,6 @@ where
     Head: G::IdentifierChain,
     Tail: G::Identifier;
 
-
 impl<Head, Tail> IdentifierChain<Head, Tail>
 where
     Head: G::IdentifierChain,
@@ -21,11 +20,19 @@ where
     }
 }
 
+impl<Head, Tail> H::ValueExpression for IdentifierChain<Head, Tail>
+where
+    Head: G::IdentifierChain,
+    Tail: G::Identifier,
+{
+}
+
 impl<Head, Tail> H::SelectSublist for IdentifierChain<Head, Tail>
 where
     Head: G::IdentifierChain,
-    Tail: G::Identifier
-{}
+    Tail: G::Identifier,
+{
+}
 
 impl<Head, Tail> H::IdentifierChain for IdentifierChain<Head, Tail>
 where
@@ -47,7 +54,8 @@ where
         stream: &mut W,
         ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
-        todo!()
+        self.0.write(stream, ctx)?;
+        write!(stream, ".")?;
+        self.1.write(stream, ctx)
     }
 }
-

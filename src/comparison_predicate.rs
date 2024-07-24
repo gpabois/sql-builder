@@ -1,8 +1,8 @@
 use sql_builder_macros::ComparisonPredicate;
 
-use crate::ToQuery;
 use crate::grammar as G;
 use crate::helpers as H;
+use crate::ToQuery;
 
 enum ComparisonKind {
     Equals,
@@ -47,17 +47,26 @@ where
     op: ComparisonKind,
 }
 
-impl<Lhs, Rhs> H::SelectSublist for Compare<Lhs, Rhs> 
+impl<Lhs, Rhs> H::ValueExpression for Compare<Lhs, Rhs>
 where
     Lhs: G::RowValueConstructor,
     Rhs: G::RowValueConstructor,
-{}
+{
+}
 
-impl<Lhs, Rhs> H::SearchCondition for Compare<Lhs, Rhs> 
+impl<Lhs, Rhs> H::SelectSublist for Compare<Lhs, Rhs>
 where
     Lhs: G::RowValueConstructor,
     Rhs: G::RowValueConstructor,
-{}
+{
+}
+
+impl<Lhs, Rhs> H::SearchCondition for Compare<Lhs, Rhs>
+where
+    Lhs: G::RowValueConstructor,
+    Rhs: G::RowValueConstructor,
+{
+}
 
 impl<Lhs, Rhs> ToQuery for Compare<Lhs, Rhs>
 where
@@ -84,8 +93,9 @@ where
 /// <lhs> = <rhs>
 /// ```
 pub fn eq<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> impl G::ComparisonPredicate
-    where Lhs: G::RowValueConstructor,
-            Rhs: G::RowValueConstructor
+where
+    Lhs: G::RowValueConstructor,
+    Rhs: G::RowValueConstructor,
 {
     Compare {
         lhs,

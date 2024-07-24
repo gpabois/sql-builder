@@ -40,6 +40,13 @@ where
     rhs: Rhs,
 }
 
+impl<Lhs, Rhs> H::ValueExpression for TermOperand<Lhs, Rhs>
+where
+    Lhs: G::Term,
+    Rhs: G::Factor,
+{
+}
+
 impl<Lhs, Rhs> H::SelectSublist for TermOperand<Lhs, Rhs>
 where
     Lhs: G::Term,

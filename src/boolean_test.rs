@@ -15,17 +15,26 @@ where
     rhs: Truth,
 }
 
+impl<Primary, Truth> H::ValueExpression for IsTruthValue<Primary, Truth>
+where
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
+{
+}
+
 impl<Primary, Truth> H::SearchCondition for IsTruthValue<Primary, Truth>
 where
     Primary: G::BooleanPrimary,
     Truth: G::TruthValue,
-{}
+{
+}
 
 impl<Primary, Truth> H::SelectSublist for IsTruthValue<Primary, Truth>
 where
     Primary: G::BooleanPrimary,
     Truth: G::TruthValue,
-{}
+{
+}
 
 impl<Primary, Truth> ToQuery for IsTruthValue<Primary, Truth>
 where
@@ -53,18 +62,26 @@ where
     rhs: Truth,
 }
 
+impl<Primary, Truth> H::ValueExpression for IsNotTruthValue<Primary, Truth>
+where
+    Primary: G::BooleanPrimary,
+    Truth: G::TruthValue,
+{
+}
+
 impl<Primary, Truth> H::SelectSublist for IsNotTruthValue<Primary, Truth>
 where
     Primary: G::BooleanPrimary,
     Truth: G::TruthValue,
-{}
+{
+}
 
 impl<Primary, Truth> H::SearchCondition for IsNotTruthValue<Primary, Truth>
 where
     Primary: G::BooleanPrimary,
     Truth: G::TruthValue,
-{}
-
+{
+}
 
 impl<Primary, Truth> ToQuery for IsNotTruthValue<Primary, Truth>
 where
@@ -88,6 +105,9 @@ pub fn is_truth_value(lhs: impl G::BooleanPrimary, rhs: impl G::TruthValue) -> i
 }
 
 #[inline]
-pub fn is_not_truth_value(lhs: impl G::BooleanPrimary, rhs: impl G::TruthValue) -> impl G::BooleanTest {
+pub fn is_not_truth_value(
+    lhs: impl G::BooleanPrimary,
+    rhs: impl G::TruthValue,
+) -> impl G::BooleanTest {
     IsNotTruthValue { lhs, rhs }
 }

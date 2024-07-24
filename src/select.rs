@@ -1,4 +1,4 @@
-use sql_builder_macros::{QuerySpecification, SelectList};
+use sql_builder_macros::QuerySpecification;
 
 use crate::{from_clause::From, ToQuery};
 
@@ -47,11 +47,9 @@ impl<SeLs> BeginSelect<SeLs>
 where
     SeLs: G::SelectList,
 {
-    pub fn from<TabRefs>(
-        self,
-        table_refs: TabRefs,
-    ) -> impl G::QuerySpecification 
-    where TabRefs: G::TableReferenceList
+    pub fn from<TabRefs>(self, table_refs: TabRefs) -> impl G::QuerySpecification
+    where
+        TabRefs: G::TableReferenceList,
     {
         Select {
             quantifier: None,
@@ -138,18 +136,21 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::{helpers::SelectSublist, id, select, ToQuery as _};
+    use crate::{
+        helpers::{QuerySpecification as _, SelectSublist, ValueExpression},
+        id, select, ToQuery as _,
+    };
 
     #[test]
     fn test_select_basic() {
         let selected_columns = id("col1")
-            .add_selection(id("col2"))
+            .add_selection(id("col2").alias_column(id("aliased_column")))
             .add_selection(id("col3"));
 
-        let stmt = select(selected_columns).from(id("my_table"));
+        let table = id("my_table");
+        let stmt = select(selected_columns).from(table);
 
         let sql = stmt.to_raw_query().unwrap();
         assert_eq!(
@@ -160,8 +161,8 @@ mod tests {
 
     #[test]
     fn test_select_distinct() {
-        let sel = select(id("col1")).from(id("my_table")).distinct();
-        let sql = sel.to_string().unwrap();
+        let stmt = select(id("col1")).from(id("my_table")).distinct();
+        let sql = stmt.to_raw_query().unwrap();
         assert_eq!(sql, "SELECT DISTINCT col1 FROM my_table");
     }
 }

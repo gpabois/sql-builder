@@ -17,6 +17,8 @@ pub mod where_clause;
 pub mod derived_column;
 pub mod from_clause;
 
+pub mod asterisk;
+pub mod blank;
 pub mod boolean_factor;
 pub mod boolean_primary;
 pub mod boolean_term;
@@ -30,10 +32,8 @@ pub mod identifier_chain;
 pub mod insert;
 pub mod schema_name;
 pub mod search_condition;
-pub mod unqualified_schema_name;
-pub mod blank;
-pub mod asterisk;
 pub mod truth_value;
+pub mod unqualified_schema_name;
 
 use std::io::Write;
 
@@ -71,10 +71,13 @@ pub use where_clause::Where;
 
 pub use sql_builder_macros::{check_symbol_loops, id};
 
-// check_symbol_loops!();
+check_symbol_loops!();
 
 pub mod helpers {
-    use crate::{boolean_primary::NestedSearchCondition, grammar as G, select_sublist::SelectLink, table_reference_list::TableReferenceListKernel};
+    use crate::{
+        boolean_primary::NestedSearchCondition, derived_column::AliasedColumn, grammar as G,
+        select_sublist::SelectLink, table_reference_list::TableReferenceListKernel,
+    };
     pub trait QuerySpecification {
         type TableExpression: G::TableExpression;
 
@@ -112,16 +115,21 @@ pub mod helpers {
     }
 
     pub trait SelectSublist {
-        fn add_selection(self, element: impl G::SelectSublistElement) -> impl G::SelectSublist 
-            where Self: G::SelectSublist {
-                SelectLink::new(self, element)
+        fn add_selection(self, element: impl G::SelectSublistElement) -> impl G::SelectSublist
+        where
+            Self: G::SelectSublist,
+        {
+            SelectLink::new(self, element)
         }
     }
 
     pub trait ValueExpression {
         /// Alias the column.
-        fn alias_column(self, id: impl G::ColumnName) -> impl G::DerivedColumn {
-
+        fn alias_column(self, id: impl G::ColumnName) -> impl G::DerivedColumn
+        where
+            Self: G::ValueExpression,
+        {
+            AliasedColumn::new(self, id)
         }
     }
 
@@ -147,8 +155,9 @@ pub mod helpers {
     }
     pub trait TableReference: Sized {
         /// Turn a table reference into a table reference list.
-        fn to_list(self) -> impl G::TableReferenceList 
-        where Self: G::TableReference
+        fn to_list(self) -> impl G::TableReferenceList
+        where
+            Self: G::TableReference,
         {
             TableReferenceListKernel::new(self)
         }
@@ -160,8 +169,9 @@ pub mod helpers {
     where
         Self: Sized,
     {
-        fn nest(self) -> impl G::BooleanPrimary 
-        where Self: G::SearchCondition
+        fn nest(self) -> impl G::BooleanPrimary
+        where
+            Self: G::SearchCondition,
         {
             NestedSearchCondition::new(self)
         }

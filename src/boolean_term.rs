@@ -15,17 +15,26 @@ where
     rhs: Rhs,
 }
 
-impl<Lhs, Rhs> H::SelectSublist for And<Lhs, Rhs> 
+impl<Lhs, Rhs> H::ValueExpression for And<Lhs, Rhs>
 where
     Lhs: G::BooleanTerm,
     Rhs: G::BooleanFactor,
-{}
+{
+}
 
-impl<Lhs, Rhs> H::SearchCondition for And<Lhs, Rhs> 
+impl<Lhs, Rhs> H::SelectSublist for And<Lhs, Rhs>
 where
     Lhs: G::BooleanTerm,
     Rhs: G::BooleanFactor,
-{}
+{
+}
+
+impl<Lhs, Rhs> H::SearchCondition for And<Lhs, Rhs>
+where
+    Lhs: G::BooleanTerm,
+    Rhs: G::BooleanFactor,
+{
+}
 
 impl<Lhs, Rhs> ToQuery for And<Lhs, Rhs>
 where
@@ -54,7 +63,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{and, eq, id, neq};
+    use crate::{and, eq, id, neq, ToQuery as _};
 
     #[test]
     pub fn test_and() {
