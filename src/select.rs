@@ -1,5 +1,6 @@
 use sql_builder_macros::QuerySpecification;
 
+use crate::either::Either;
 use crate::{from_clause::From, ToQuery};
 
 use crate::grammar as G;
@@ -73,12 +74,12 @@ where
     table_expression: TabExpr,
 }
 
-impl<SeLs, TabExpr> H::QuerySpecification for Select<SeLs, TabExpr>
+impl<Selection, Table> H::QuerySpecification for Select<Selection, Table>
 where
-    SeLs: G::SelectList,
-    TabExpr: G::TableExpression,
+    Selection: G::SelectList,
+    Table: G::TableExpression,
 {
-    type TableExpression = TabExpr;
+    type TableExpression = Table;
 
     #[inline]
     fn distinct(self) -> impl G::QuerySpecification {
@@ -113,10 +114,10 @@ where
     }
 }
 
-impl<SeLs, TabExpr> ToQuery for Select<SeLs, TabExpr>
+impl<Selection, Table> ToQuery for Select<Selection, Table>
 where
-    SeLs: G::SelectList,
-    TabExpr: G::TableExpression,
+    Selection: G::SelectList,
+    Table: G::TableExpression,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -134,5 +135,35 @@ where
         self.select_list.write(stream, ctx)?;
         write!(stream, " ")?;
         self.table_expression.write(stream, ctx)
+    }
+}
+
+impl<Lhs, Rhs> H::QuerySpecification for Either<Lhs, Rhs>
+where Lhs: G::QuerySpecification, Rhs: G::QuerySpecification 
+{
+    type TableExpression = Either<
+        Lhs::TableExpression, 
+        Rhs::TableExpression
+    >;
+
+    fn distinct(self) -> impl G::QuerySpecification {
+        self.apply(|lhs| lhs.distinct(), |rhs: Rhs| rhs.distinct())
+    }
+
+    fn all(self) -> impl G::QuerySpecification {
+        self.apply(|lhs| lhs.all(), |rhs: Rhs| rhs.all())
+
+    }
+
+    fn transform_table_expression<NewTableExpr>(
+        self,
+        transform: impl FnOnce(Self::TableExpression) -> NewTableExpr,
+    ) -> impl G::QuerySpecification
+    where
+        NewTableExpr: G::TableExpression {
+        self.apply_with_args(transform, |lhs, transform| 
+            lhs.transform_table_expression(|a| transform(Either::Left(a))), 
+            |rhs, transform| rhs.transform_table_expression(|a| transform(Either::Right(a))), )
+
     }
 }

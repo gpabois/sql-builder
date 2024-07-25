@@ -19,6 +19,15 @@ impl<Lhs, Rhs> Either<Lhs, Rhs> {
     }
 
     #[inline]
+    pub fn apply<NewLhs, NewRhs>(self, on_left: impl FnOnce(Lhs) -> NewLhs, on_right: impl FnOnce(Rhs) -> NewRhs) 
+        -> Either<NewLhs, NewRhs> {
+            match self {
+                Either::Left(lhs) => Either::Left(on_left(lhs)),
+                Either::Right(rhs) => Either::Right(on_right(rhs))
+            }
+    }
+
+    #[inline]
     pub fn apply_with_args<NewLhs, NewRhs, Args>(self, args: Args, on_left: impl FnOnce(Lhs, Args) -> NewLhs, on_right: impl FnOnce(Rhs, Args) -> NewRhs) 
         -> Either<NewLhs, NewRhs> {
             match self {

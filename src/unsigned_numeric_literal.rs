@@ -1,6 +1,6 @@
 use sql_builder_macros::UnsignedNumericLiteral;
 
-use crate::{ToQuery, helpers as H};
+use crate::ToQuery;
 
 
 #[derive(UnsignedNumericLiteral)]
@@ -8,9 +8,6 @@ pub enum UnsignedNumericLiteral {
     Int(u64),
     Float(f64)
 }
-
-impl H::SelectSublist for UnsignedNumericLiteral {}
-impl H::ValueExpression for UnsignedNumericLiteral {}
 
 impl ToQuery for UnsignedNumericLiteral {
     fn write<W: std::io::Write>(

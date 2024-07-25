@@ -1,4 +1,5 @@
-use crate::grammar;
+use crate::grammar as G;
+use sql_builder_macros::DynamicParameterSpecification;
 use sqlx::{Database, Encode};
 use std::marker::PhantomData;
 

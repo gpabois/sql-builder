@@ -1,13 +1,10 @@
 use sql_builder_macros::CharacterStringLiteral;
 
-use crate::{ToQuery, helpers as H};
+use crate::ToQuery;
 
 #[derive(CharacterStringLiteral)]
 pub struct CharacterStringLiteralRef<'a>(&'a str);
 
-impl H::ValueExpression for CharacterStringLiteralRef<'_> {}
-impl H::SelectSublist for CharacterStringLiteralRef<'_> {}
- 
 impl ToQuery for CharacterStringLiteralRef<'_> {
     /// Write the string literal
     /// Autoescape quote

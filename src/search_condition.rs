@@ -1,5 +1,4 @@
 use crate::grammar as G;
-use crate::helpers as H;
 
 use crate::ToQuery;
 use sql_builder_macros::SearchCondition;
@@ -12,13 +11,6 @@ where
 {
     lhs: Lhs,
     rhs: Rhs,
-}
-
-impl<Lhs, Rhs> H::SearchCondition for Or<Lhs, Rhs>
-where
-    Lhs: G::SearchCondition,
-    Rhs: G::BooleanTerm,
-{
 }
 
 impl<SearchCond, BoolTerm> ToQuery for Or<SearchCond, BoolTerm>

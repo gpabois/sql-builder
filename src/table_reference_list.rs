@@ -2,7 +2,6 @@ use sql_builder_macros::TableReferenceList;
 
 use crate::ToQuery;
 use crate::grammar as G;
-use crate::helpers as H;
 
 #[derive(TableReferenceList)]
 pub struct TableReferenceLink<Head, Tail>
@@ -22,13 +21,6 @@ where
     pub fn new(head: Head, tail: Tail) -> Self {
         Self{head, tail}
     }
-}
-
-impl<Head, Tail> H::TableReferenceList for TableReferenceLink<Head, Tail>
-where
-    Head: G::TableReferenceList,
-    Tail: G::TableReference 
-{
 }
 
 impl<Head, Tail> ToQuery for TableReferenceLink<Head, Tail>

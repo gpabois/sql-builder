@@ -10,10 +10,6 @@ pub struct Not<BoolTest>(BoolTest)
 where
     BoolTest: G::BooleanTest;
 
-impl<Test> H::ValueExpression for Not<Test> where Test: G::BooleanTest {}
-impl<Test> H::SelectSublist for Not<Test> where Test: G::BooleanTest {}
-impl<Test> H::SearchCondition for Not<Test> where Test: G::BooleanTest {}
-
 impl<BoolTest> ToQuery for Not<BoolTest>
 where
     BoolTest: G::BooleanTest,

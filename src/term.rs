@@ -3,7 +3,6 @@ use sql_builder_macros::Term;
 use crate::ToQuery;
 
 use crate::grammar as G;
-use crate::helpers as H;
 
 enum TermOperandKind {
     Mult,
@@ -38,20 +37,6 @@ where
     lhs: Lhs,
     kind: TermOperandKind,
     rhs: Rhs,
-}
-
-impl<Lhs, Rhs> H::ValueExpression for TermOperand<Lhs, Rhs>
-where
-    Lhs: G::Term,
-    Rhs: G::Factor,
-{
-}
-
-impl<Lhs, Rhs> H::SelectSublist for TermOperand<Lhs, Rhs>
-where
-    Lhs: G::Term,
-    Rhs: G::Factor,
-{
 }
 
 impl<Lhs, Rhs> ToQuery for TermOperand<Lhs, Rhs>

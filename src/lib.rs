@@ -108,14 +108,15 @@ sql_builder_macros::check_symbol_loops!();
 
 pub mod helpers {
     use crate::{
-        boolean_primary::NestedSearchCondition, column_name_list::ColumnNameLink, derived_column::AliasedColumn, grammar as G, select_sublist::SelectLink, table_reference_list::TableReferenceLink, where_clause::Where
+        boolean_primary::NestedSearchCondition, column_name_list::ColumnNameLink, derived_column::AliasedColumn, grammar as G, identifier_chain::IdentifierLink, select_sublist::SelectLink, table_reference_list::TableReferenceLink, where_clause::Where
     };
     pub trait QuerySpecification {
         type TableExpression: G::TableExpression;
 
-        /// Distinct values in the Select
+        /// Removed duplicated rows
         fn distinct(self) -> impl G::QuerySpecification;
-
+        
+        /// All rows are selected
         fn all(self) -> impl G::QuerySpecification;
 
         /// Set the condition to filter the rows.
@@ -210,7 +211,11 @@ pub mod helpers {
     }
 
     pub trait IdentifierChain {
-        fn add_identifier(self, id: impl G::Identifier) -> impl G::IdentifierChain;
+        fn add_identifier(self, id: impl G::Identifier) -> impl G::IdentifierChain 
+        where Self: G::IdentifierChain
+        {
+            IdentifierLink::new(self, id)
+        }
     }
     pub trait SearchCondition
     where

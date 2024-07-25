@@ -47,27 +47,6 @@ where
     op: ComparisonKind,
 }
 
-impl<Lhs, Rhs> H::ValueExpression for Compare<Lhs, Rhs>
-where
-    Lhs: G::RowValuePredicand,
-    Rhs: G::RowValuePredicand,
-{
-}
-
-impl<Lhs, Rhs> H::SelectSublist for Compare<Lhs, Rhs>
-where
-    Lhs: G::RowValuePredicand,
-    Rhs: G::RowValuePredicand,
-{
-}
-
-impl<Lhs, Rhs> H::SearchCondition for Compare<Lhs, Rhs>
-where
-    Lhs: G::RowValuePredicand,
-    Rhs: G::RowValuePredicand,
-{
-}
-
 impl<Lhs, Rhs> ToQuery for Compare<Lhs, Rhs>
 where
     Lhs: G::RowValuePredicand,

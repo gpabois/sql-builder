@@ -13,14 +13,6 @@ where
     Head: G::SelectSublist,
     Tail: G::SelectSublistElement;
 
-impl<Head, Tail> H::SelectSublist for SelectLink<Head, Tail> 
-where
-    Head: G::SelectSublist,
-    Tail: G::SelectSublistElement
-{
-
-}
-
 impl<Head, Tail> SelectLink<Head, Tail>
 where
     Head: G::SelectSublist,
@@ -46,5 +38,3 @@ where
         self.1.write(stream, ctx)
     }
 }
-
-impl H::SelectSublist for Blank {}

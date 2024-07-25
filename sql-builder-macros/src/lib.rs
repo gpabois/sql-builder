@@ -137,7 +137,6 @@ pub fn derive_either(input: TokenStream) -> TokenStream {
 
     SYMBOL_MAP
         .entries()
-        .filter(|(_, flags)| flags.with_either_impl())
         .map(|(&key, flags)| {
             let symbol_ident = Ident::new(key, Span::call_site());
 
@@ -147,7 +146,7 @@ pub fn derive_either(input: TokenStream) -> TokenStream {
                 quote! {}
             };
 
-            quote! {
+            let mut tokens = quote! {
                 impl<Lhs, Rhs> crate::grammar:: #symbol_ident for #ident<Lhs, Rhs>
                     where
                         Lhs: crate::grammar:: #symbol_ident,
@@ -155,7 +154,21 @@ pub fn derive_either(input: TokenStream) -> TokenStream {
                 {
                     #body_impl
                 }
+            };
+
+            if flags.with_helpers() && !flags.helpers_require_methods_implementations() {
+                tokens = quote! {
+                    #tokens
+                    
+                    impl<Lhs, Rhs> crate::helpers:: #symbol_ident for #ident<Lhs, Rhs>
+                        where
+                            Lhs: crate::grammar:: #symbol_ident,
+                            Rhs: crate::grammar:: #symbol_ident
+                    {}              
+                }
             }
+
+            tokens
         })
         .collect::<proc_macro2::TokenStream>()
         .into()
@@ -192,12 +205,23 @@ pub fn derive_blank(input: TokenStream) -> TokenStream {
                 quote! {}
             };
 
-            quote! {
+            let mut tokens = quote! {
                 impl crate::grammar::#symbol_ident for Blank
                 {
                     #body
                 }
+            };
+            
+            if flags.with_helpers() && !flags.helpers_require_methods_implementations() {
+                tokens = quote! {
+                    #tokens
+
+                    impl crate::helpers::#symbol_ident for Blank
+                    {}
+                }
             }
+
+            tokens
         })
         .collect::<proc_macro2::TokenStream>()
         .into()
@@ -230,9 +254,22 @@ fn impl_symbol_trait(symbol: &str, ast: &DeriveInput, def: &SymbolDef) -> proc_m
 
     let trait_ident = Ident::new(symbol, proc_macro2::Span::call_site());
 
-    quote! {
+    let mut tokens = quote! {
         impl #impl_generics crate::grammar:: #trait_ident for #name #type_generics #where_clause {
             #with_impl
         }
+    };
+
+    // Automatic helper trait implementation.
+    if def.with_helpers() 
+        && !def.helpers_require_methods_implementations() 
+    {
+        tokens = quote! {
+            #tokens
+
+            impl #impl_generics crate::helpers:: #trait_ident for #name #type_generics #where_clause {}
+        };
     }
+
+    tokens.into()
 }

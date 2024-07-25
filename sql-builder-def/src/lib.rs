@@ -26,11 +26,19 @@ impl SymbolDef {
     pub fn with_helpers(&self) -> bool {
         self.flags & WITH_HELPERS == WITH_HELPERS
     }
+
+    #[inline]
+    pub fn helpers_require_methods_implementations(&self) -> bool {
+        self.flags & WITH_REQUIRED_HELPERS_METHOD == WITH_REQUIRED_HELPERS_METHOD
+    }
 }
 
 pub const WITH_BLANK_IMPL: u8 = 0b1;
-pub const WITH_EITHER_IMPL: u8 = 0b100;
-pub const WITH_HELPERS: u8 = 0b10;
+pub const WITH_EITHER_IMPL: u8 = 0b10;
+/// The symbol has helper functions.
+pub const WITH_HELPERS: u8 = 0b100;
+/// Used when the helper trait requires methods implementation.
+pub const WITH_REQUIRED_HELPERS_METHOD: u8 = 0b1000;
 
 /// Defines the symbols in the SQL grammar.
 pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
@@ -45,7 +53,9 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
                 <select list>
                 <table expression>
     */
-    "QuerySpecification" => SymbolDef::new(&[], WITH_HELPERS),
+    "QuerySpecification" => SymbolDef::new(&[], 
+        WITH_HELPERS | WITH_REQUIRED_HELPERS_METHOD
+    ),
     /*
         <table expression>    ::=
             <from clause>
@@ -54,12 +64,14 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             [ <having clause> ]
             [ <window clause> ]
     */
-    "TableExpression" => SymbolDef::new(&["FromClause"], WITH_HELPERS | WITH_EITHER_IMPL),
+    "TableExpression" => SymbolDef::new(&[
+        "FromClause"
+    ], WITH_HELPERS | WITH_EITHER_IMPL | WITH_REQUIRED_HELPERS_METHOD),
 
     /*
         <from clause> ::= FROM <table reference list>
     */
-    "FromClause" => SymbolDef::new(&[], WITH_HELPERS | WITH_BLANK_IMPL | WITH_EITHER_IMPL),
+    "FromClause" => SymbolDef::new(&[], WITH_HELPERS | WITH_BLANK_IMPL | WITH_EITHER_IMPL | WITH_REQUIRED_HELPERS_METHOD),
     /*
         <where clause> ::= WHERE <search condition>
     */

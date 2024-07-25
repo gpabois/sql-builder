@@ -12,10 +12,6 @@ where Head: G::ColumnNameList, Tail: G::ColumnName
     tail: Tail
 }
 
-impl<Head, Tail> H::ColumnNameList for ColumnNameLink<Head, Tail> 
-where Head: G::ColumnNameList, Tail: G::ColumnName {
-}
-
 impl<Head, Tail> ToQuery for ColumnNameLink<Head, Tail> 
 where Head: G::ColumnNameList, Tail: G::ColumnName {
     fn write<W: std::io::Write>(

@@ -2,7 +2,6 @@ use crate::ToQuery;
 use sql_builder_macros::DerivedColumn;
 
 use crate::grammar as G;
-use crate::helpers as H;
 
 #[derive(DerivedColumn)]
 pub struct AliasedColumn<Value, Name>
@@ -25,13 +24,6 @@ where
             alias,
         }
     }
-}
-
-impl<Value, Name> H::SelectSublist for AliasedColumn<Value, Name>
-where
-    Value: G::ValueExpression,
-    Name: G::ColumnName,
-{
 }
 
 impl<Value, Name> ToQuery for AliasedColumn<Value, Name>

@@ -1,26 +1,11 @@
-use crate::grammar as G;
-use crate::helpers as H;
 use crate::{
-    error::Error, identifier_chain::IdentifierChain, table_reference_list::TableReferenceLink,
-    ToQuery,
+    error::Error, ToQuery,
 };
 use regex::Regex;
 use sql_builder_macros::Identifier;
 
 #[derive(Clone, Identifier)]
 pub struct IdentifierRef<'s>(&'s str);
-
-impl H::ColumnNameList for IdentifierRef<'_> {}
-impl H::ValueExpression for IdentifierRef<'_> {}
-impl H::SelectSublist for IdentifierRef<'_> {}
-impl H::TableReference for IdentifierRef<'_> {}
-impl H::TableReferenceList for IdentifierRef<'_> {}
-
-impl H::IdentifierChain for IdentifierRef<'_> {
-    fn add_identifier(self, id: impl G::Identifier) -> impl G::IdentifierChain {
-        IdentifierChain::new(self, id)
-    }
-}
 
 impl IdentifierRef<'_> {
     pub fn is_valid(value: &str) -> bool {

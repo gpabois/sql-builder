@@ -17,9 +17,6 @@ where
         Self(cond)
     }
 }
-impl<Cond> H::ValueExpression for NestedSearchCondition<Cond> where Cond: G::SearchCondition {}
-impl<Cond> H::SelectSublist for NestedSearchCondition<Cond> where Cond: G::SearchCondition {}
-impl<Cond> H::SearchCondition for NestedSearchCondition<Cond> where Cond: G::SearchCondition {}
 
 impl<SearchCond> ToQuery for NestedSearchCondition<SearchCond>
 where
