@@ -1,6 +1,6 @@
 use sql_builder_macros::FromClause;
 
-use crate::{either::Either, table_expression::TableExpr, Blank, ToQuery};
+use crate::{either::Either, table_expression::TableExpr, blank::Blank, ToQuery};
 
 use crate::grammar as G;
 use crate::helpers as H;
@@ -84,8 +84,7 @@ where
 
 impl H::FromClause for Blank {
     fn add_table_reference(self, table_ref: impl G::TableReference) -> impl G::FromClause {
-        let table_refs = table_ref.to_list();
-        From::new(table_refs)
+        From::new(table_ref)
     }
 }
 

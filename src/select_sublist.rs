@@ -1,6 +1,6 @@
 use sql_builder_macros::SelectSublist;
 
-use crate::Blank;
+use crate::blank::Blank;
 use crate::ToQuery;
 use crate::grammar as G;
 use crate::helpers as H;

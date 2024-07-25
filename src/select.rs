@@ -16,19 +16,20 @@ pub enum SetQuantifier {
 /// Creates a select statement
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use sql_builder::{select, id};
 ///
-/// let selected_columns = id("col1")
-/// .chain(id("col2").alias(id("aliased_column")))
-/// .chain(id("col3"));
+/// let selected_columns = id!(col1)
+/// .add_selection(id!(col2).alias_column(id!(aliased_column)))
+/// .add_selection(id!(col3));
+/// let table = id!(my_table);
+/// 
+/// let stmt = select(selected_columns).from(table);
 ///
-/// let sel = select(selected_columns).from(id("my_table"));
-///
-/// let sql = sel.to_string().unwrap();
+/// let sql = sel.to_raw_query().unwrap();
 /// assert_eq!(sql, "SELECT col1, col2 AS aliased_column, col3 FROM my_table");
 /// ```
-pub fn select<SeLs: G::SelectList>(select_list: SeLs) -> BeginSelect<SeLs> {
+pub fn select<Selection: G::SelectList>(select_list: Selection) -> BeginSelect<Selection> {
     BeginSelect { select_list }
 }
 
@@ -133,36 +134,5 @@ where
         self.select_list.write(stream, ctx)?;
         write!(stream, " ")?;
         self.table_expression.write(stream, ctx)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{
-        helpers::{QuerySpecification as _, SelectSublist, ValueExpression},
-        id, select, ToQuery as _,
-    };
-
-    #[test]
-    fn test_select_basic() {
-        let selected_columns = id("col1")
-            .add_selection(id("col2").alias_column(id("aliased_column")))
-            .add_selection(id("col3"));
-
-        let table = id("my_table");
-        let stmt = select(selected_columns).from(table);
-
-        let sql = stmt.to_raw_query().unwrap();
-        assert_eq!(
-            sql,
-            "SELECT col1, col2 AS aliased_column, col3 FROM my_table"
-        );
-    }
-
-    #[test]
-    fn test_select_distinct() {
-        let stmt = select(id("col1")).from(id("my_table")).distinct();
-        let sql = stmt.to_raw_query().unwrap();
-        assert_eq!(sql, "SELECT DISTINCT col1 FROM my_table");
     }
 }

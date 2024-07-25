@@ -1,18 +1,19 @@
 use sql_builder_macros::QualifiedName;
 
-use crate::{grammar, identifier::Identifier, ToQuery};
+use crate::{grammar as G, ToQuery};
 #[derive(QualifiedName)]
-pub struct QualifiedName<SchemaName>
+pub struct QualifiedName<SchemaName, Name>
 where
-    SchemaName: grammar::SchemaName,
+    SchemaName: G::SchemaName,
+    Name: G::Identifier,
 {
     schema_name: SchemaName,
-    name: Identifier,
+    name: Name,
 }
 
-impl<SchemaName> ToQuery for QualifiedName<SchemaName>
+impl<SchemaName, Name> ToQuery for QualifiedName<SchemaName, Name>
 where
-    SchemaName: grammar::SchemaName,
+    SchemaName: G::SchemaName, Name: G::Identifier
 {
     fn write<W: std::io::Write>(
         &self,

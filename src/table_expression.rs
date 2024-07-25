@@ -3,7 +3,7 @@ use sql_builder_macros::TableExpression;
 use crate::{
     either::Either,
     grammar::{FromClause, TableExpression, WhereClause},
-    Blank, ToQuery,
+    blank::Blank, ToQuery,
 };
 
 use crate::grammar as G;

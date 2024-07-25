@@ -1,39 +1,70 @@
-pub mod error;
+//! SQL Builder
+//! 
+//! A crate to build SQL queries that comply with the ISO/IEC 9075-2:2003, at compile-time.
+//! 
+//! # Notes
+//! Currently, only a fragment of the standard is implemented. 
+//! 
+//! The current development roadmap is to allow to build most of the *simple* queries
+//! (direct SELECT, INSERT, UPDATE and DELETE commands).
+//! 
+//! # How to build a SELECT query
+//! ```ignore
+//! use sql_builder::{select, id};
+//!
+//! let selected_columns = id!(col1)
+//! .add_selection(id!(col2).alias_column(id!(aliased_column)))
+//! .add_selection(id!(col3));
+//! let table = id!(my_table);
+//! 
+//! let stmt = select(selected_columns).from(table);
+//!
+//! let sql = sel.to_raw_query().unwrap();
+//! assert_eq!(sql, "SELECT col1, col2 AS aliased_column, col3 FROM my_table");
+//! ```
+//! 
+//! # How to build an INSERT query
+//! 
+mod error;
 
-pub mod group_by;
-pub mod name;
-pub mod select;
-pub mod select_sublist;
-pub mod table_expression;
-pub mod table_reference_list;
+mod group_by;
+mod qualified_name;
+mod select;
+mod select_sublist;
+mod table_expression;
+mod table_reference_list;
 
-pub mod bind;
-pub mod identifier;
-pub mod literal;
-pub mod numeric_value_expression;
-pub mod term;
-pub mod where_clause;
+mod bind;
+mod identifier;
+mod literal;
+mod numeric_value_expression;
+mod term;
+mod where_clause;
 
-pub mod derived_column;
-pub mod from_clause;
+mod derived_column;
+mod from_clause;
 
-pub mod asterisk;
-pub mod blank;
-pub mod boolean_factor;
-pub mod boolean_primary;
-pub mod boolean_term;
-pub mod boolean_test;
-pub mod comparison_predicate;
-pub mod contextually_typed_row_value_constructor_element_list;
-pub mod contextually_typed_row_value_expression_list;
-pub mod either;
-pub mod having_clause;
-pub mod identifier_chain;
-pub mod insert;
-pub mod schema_name;
-pub mod search_condition;
-pub mod truth_value;
-pub mod unqualified_schema_name;
+mod asterisk;
+mod blank;
+mod boolean_factor;
+mod boolean_primary;
+mod boolean_term;
+mod boolean_test;
+mod comparison_predicate;
+mod contextually_typed_row_value_constructor_element_list;
+mod contextually_typed_row_value_expression_list;
+mod either;
+mod having_clause;
+mod identifier_chain;
+mod insert;
+mod schema_name;
+mod search_condition;
+mod truth_value;
+mod unqualified_schema_name;
+mod character_string_literal;
+mod unsigned_numeric_literal;
+mod signed_numeric_literal;
+pub mod column_name_list;
 
 use std::io::Write;
 
@@ -55,7 +86,6 @@ pub trait ToQuery {
     ) -> Result<(), std::io::Error>;
 }
 
-pub use blank::Blank;
 pub use boolean_factor::not;
 pub use boolean_term::and;
 pub use boolean_test::{is_not_truth_value, is_truth_value};
@@ -65,18 +95,25 @@ pub use literal::lit;
 pub use numeric_value_expression::{add, sub};
 pub use search_condition::or;
 pub use select::select;
-use sql_builder_macros::Blank;
+pub use insert::insert;
 pub use term::{div, mult};
-pub use where_clause::Where;
+pub use character_string_literal::char_str_lit;
+pub use unsigned_numeric_literal::unsigned_numeric_lit;
+pub use signed_numeric_literal::signed_numeric_lit;
+pub use error::Error;
+pub use sql_builder_macros::{id, lit};
+pub use truth_value::{True, False, Unknown};
 
-pub use sql_builder_macros::{check_symbol_loops, id};
-
-check_symbol_loops!();
+sql_builder_macros::check_symbol_loops!();
 
 pub mod helpers {
     use crate::{
-        boolean_primary::NestedSearchCondition, derived_column::AliasedColumn, grammar as G,
-        select_sublist::SelectLink, table_reference_list::TableReferenceListKernel,
+        grammar as G,
+        boolean_primary::NestedSearchCondition, 
+        column_name_list::ColumnNameLink, 
+        derived_column::AliasedColumn, 
+        select_sublist::SelectLink, 
+        table_reference_list::TableReferenceLink
     };
     pub trait QuerySpecification {
         type TableExpression: G::TableExpression;
@@ -148,20 +185,22 @@ pub mod helpers {
         ) -> impl G::Insert;
     }
     pub trait TableReferenceList {
-        fn add_table_reference(
-            self,
-            table_ref: impl G::TableReference,
-        ) -> impl G::TableReferenceList;
-    }
-    pub trait TableReference: Sized {
-        /// Turn a table reference into a table reference list.
-        fn to_list(self) -> impl G::TableReferenceList
-        where
-            Self: G::TableReference,
+        fn add_table_reference(self, table_ref: impl G::TableReference) -> impl G::TableReferenceList 
+        where Self: G::TableReferenceList
         {
-            TableReferenceListKernel::new(self)
+            TableReferenceLink::new(self, table_ref)
         }
     }
+    pub trait TableReference: Sized {}
+
+    pub trait ColumnNameList {
+        fn add_column(self, column_name: impl G::ColumnName) -> impl G::ColumnNameList 
+        where Self: G::ColumnNameList
+        {
+            ColumnNameLink::new(self, column_name)
+        }
+    }
+
     pub trait IdentifierChain {
         fn add_identifier(self, id: impl G::Identifier) -> impl G::IdentifierChain;
     }

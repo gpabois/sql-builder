@@ -1,8 +1,7 @@
 use sql_builder_macros::Insert;
 
 use crate::{
-    grammar::{self, InsertColumnsAndSources, InsertionTarget},
-    ToQuery,
+    blank::Blank, grammar::{self, InsertColumnsAndSources, InsertionTarget}, ToQuery
 };
 
 use crate::grammar as G;
@@ -62,4 +61,23 @@ where
         write!(stream, " ")?;
         self.values.write(stream, ctx)
     }
+}
+
+/// Begin an insert command
+pub struct BeginInsert<Target> 
+where Target: G::InsertionTarget
+{
+    target: Target
+}
+
+impl<Target> BeginInsert<Target> 
+where Target: G::InsertionTarget
+{}
+
+#[inline]
+/// Creates an insertion statement.
+pub fn insert<Target>(target: Target) -> BeginInsert<Target> 
+where Target: G::InsertionTarget
+{
+    BeginInsert { target }
 }

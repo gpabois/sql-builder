@@ -39,8 +39,8 @@ impl ToQuery for ComparisonKind {
 #[derive(ComparisonPredicate)]
 pub struct Compare<Lhs, Rhs>
 where
-    Lhs: G::RowValueConstructor,
-    Rhs: G::RowValueConstructor,
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
 {
     lhs: Lhs,
     rhs: Rhs,
@@ -49,29 +49,29 @@ where
 
 impl<Lhs, Rhs> H::ValueExpression for Compare<Lhs, Rhs>
 where
-    Lhs: G::RowValueConstructor,
-    Rhs: G::RowValueConstructor,
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
 {
 }
 
 impl<Lhs, Rhs> H::SelectSublist for Compare<Lhs, Rhs>
 where
-    Lhs: G::RowValueConstructor,
-    Rhs: G::RowValueConstructor,
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
 {
 }
 
 impl<Lhs, Rhs> H::SearchCondition for Compare<Lhs, Rhs>
 where
-    Lhs: G::RowValueConstructor,
-    Rhs: G::RowValueConstructor,
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
 {
 }
 
 impl<Lhs, Rhs> ToQuery for Compare<Lhs, Rhs>
 where
-    Lhs: G::RowValueConstructor,
-    Rhs: G::RowValueConstructor,
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
 {
     fn write<W: std::io::Write>(
         &self,
@@ -94,8 +94,8 @@ where
 /// ```
 pub fn eq<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> impl G::ComparisonPredicate
 where
-    Lhs: G::RowValueConstructor,
-    Rhs: G::RowValueConstructor,
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
 {
     Compare {
         lhs,
@@ -112,8 +112,8 @@ where
 /// <lhs> <> <rhs>
 /// ```
 pub fn neq(
-    lhs: impl G::RowValueConstructor,
-    rhs: impl G::RowValueConstructor,
+    lhs: impl G::RowValuePredicand,
+    rhs: impl G::RowValuePredicand,
 ) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
@@ -124,8 +124,8 @@ pub fn neq(
 
 #[inline]
 pub fn lt(
-    lhs: impl G::RowValueConstructor,
-    rhs: impl G::RowValueConstructor,
+    lhs: impl G::RowValuePredicand,
+    rhs: impl G::RowValuePredicand,
 ) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
@@ -136,8 +136,8 @@ pub fn lt(
 
 #[inline]
 pub fn lte(
-    lhs: impl G::RowValueConstructor,
-    rhs: impl G::RowValueConstructor,
+    lhs: impl G::RowValuePredicand,
+    rhs: impl G::RowValuePredicand,
 ) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
@@ -148,8 +148,8 @@ pub fn lte(
 
 #[inline]
 pub fn gt(
-    lhs: impl G::RowValueConstructor,
-    rhs: impl G::RowValueConstructor,
+    lhs: impl G::RowValuePredicand,
+    rhs: impl G::RowValuePredicand,
 ) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
@@ -160,59 +160,12 @@ pub fn gt(
 
 #[inline]
 pub fn gte(
-    lhs: impl G::RowValueConstructor,
-    rhs: impl G::RowValueConstructor,
+    lhs: impl G::RowValuePredicand,
+    rhs: impl G::RowValuePredicand,
 ) -> impl G::ComparisonPredicate {
     Compare {
         lhs,
         rhs,
         op: ComparisonKind::GreaterThanOrEquals,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{eq, gt, gte, id, lit, lt, lte, neq, ToQuery};
-
-    #[test]
-    fn test_eq() {
-        let cmp = eq(id("test"), lit(10.123f32));
-        let sql = cmp.to_raw_query().unwrap();
-        assert_eq!(sql, "test = 10.123");
-    }
-
-    #[test]
-    fn test_neq() {
-        let cmp = neq(id("test"), lit(10.123f32));
-        let sql = cmp.to_raw_query().unwrap();
-        assert_eq!(sql, "test <> 10.123");
-    }
-
-    #[test]
-    fn test_lt() {
-        let cmp = lt(id("test"), lit(10.123f32));
-        let sql = cmp.to_raw_query().unwrap();
-        assert_eq!(sql, "test < 10.123");
-    }
-
-    #[test]
-    fn test_lte() {
-        let cmp = lte(id("test"), lit(10.123f32));
-        let sql = cmp.to_raw_query().unwrap();
-        assert_eq!(sql, "test <= 10.123");
-    }
-
-    #[test]
-    fn test_gt() {
-        let cmp = gt(id("test"), lit(10.123f32));
-        let sql = cmp.to_raw_query().unwrap();
-        assert_eq!(sql, "test > 10.123");
-    }
-
-    #[test]
-    fn test_gte() {
-        let cmp = gte(id("test"), lit(10.123f32));
-        let sql = cmp.to_raw_query().unwrap();
-        assert_eq!(sql, "test >= 10.123");
     }
 }

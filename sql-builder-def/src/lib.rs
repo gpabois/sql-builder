@@ -456,7 +456,10 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             <unsigned literal>
             | <general value specification>
     */
-    "UnsignedValueSpecification" => SymbolDef::new(&[], 0),
+    "UnsignedValueSpecification" => SymbolDef::new(&[
+        "UnsignedLiteral",
+        "GeneralValueSpecification"
+    ], 0),
 
     /*
         <general value specification>    ::=
@@ -581,11 +584,31 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             <unsigned numeric literal>
             | <general literal>
     */
-    "UnsignedLiteral" => SymbolDef::new(&[], 0),
+    "UnsignedLiteral" => SymbolDef::new(&[
+        "UnsignedNumericLiteral",
+        "GeneralLiteral"
+    ], 0),
     /*
         <literal> ::= <signed numeric literal> | <general literal>
     */
-    "Literal" => SymbolDef::new(&[], 0),
+    "Literal" => SymbolDef::new(&[
+        "SignedNumericLiteral",
+        "GeneralLiteral"
+    ], 0),
+
+    /*
+        <signed numeric literal> ::= 
+        [ <sign> ] <unsigned numeric literal>
+    */
+    "SignedNumericLiteral" => SymbolDef::new(&["UnsignedNumericLiteral"], 0),
+
+    /*
+        <unsigned numeric literal> ::=
+            <exact numeric literal>
+            | <approximate numeric literal>
+    */
+    "UnsignedNumericLiteral" => SymbolDef::new(&[], 0),
+
     /*
         <general literal> ::=
             <character string literal>
@@ -596,15 +619,19 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             | <interval literal>
             | <boolean literal>
     */
-    "GeneralLiteral" => SymbolDef::new(&[], 0),
-
+    "GeneralLiteral" => SymbolDef::new(&[
+        "CharacterStringLiteral"
+    ], 0),
 
     /*
-        <unsigned numeric literal> ::=
-            <exact numeric literal>
-            | <approximate numeric literal>
+        <character string literal>    ::=
+         [ <introducer> <character set specification> ]
+         ' [ <character representation> ... ] '
+         [ { <separator> ' [ <character representation> ... ] ' }... ] 
     */
-    "UnsignedNumericLiteral" => SymbolDef::new(&[], 0),
+    "CharacterStringLiteral" => SymbolDef::new(&[], 0),
+    
+
 
     ///////////////////////////
     // Names and identifiers //
@@ -620,7 +647,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
             [ <catalog name> <period> ]
             <unqualified schema name>
     */
-    "SchemaName" => SymbolDef::new(&[], 0),
+    "SchemaName" => SymbolDef::new(&["UnqualifiedSchemaName"], 0),
 
     /*
         <unqualified schema name> ::= <identifier>
@@ -644,6 +671,10 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "ColumnReference" => SymbolDef::new(&["BasicIdentifierChain"], 0),
 
+    /*
+        <column name list> ::= <column name> [ { <comma> <column name> }... ] 
+    */
+    "ColumnNameList" => SymbolDef::new(&["ColumnName"], WITH_HELPERS),
     /*
         <column name> ::= <identifier>
     */
@@ -774,10 +805,17 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "Qualifier" => SymbolDef::new(&[], 0),
 
     "Insert" => SymbolDef::new(&[], 0),
-    "InsertionTarget" => SymbolDef::new(&[], 0),
-    "InsertColumnsAndSources" => SymbolDef::new(&[], 0),
+    "InsertionTarget" => SymbolDef::new(&["TableName"], 0),
+    "InsertColumnsAndSources" => SymbolDef::new(&[
+        "FromSubQuery",
+        "FromConstructor",
+        "FromDefault"
+    ], WITH_BLANK_IMPL),
     "FromSubQuery" => SymbolDef::new(&[], 0),
-    "FromConstructor" => SymbolDef::new(&[], 0),
+    "FromConstructor" => SymbolDef::new(&[
+        "ContextuallyTypedTableValueConstructor"
+    ], 0),
+    "InsertColumnList" => SymbolDef::new(&["ColumnNameList"], 0),
     "FromDefault" => SymbolDef::new(&[], 0),
     "ContextuallyTypedTableValueConstructor" => SymbolDef::new(&[], 0),
     "ContextuallyTypedRowValueExpressionList" => SymbolDef::new(&[], 0),

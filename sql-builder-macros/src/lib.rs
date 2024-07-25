@@ -8,7 +8,7 @@ use sql_builder_meta_macros::create_symbol_derivations;
 use syn::{parse_macro_input, DeriveInput, Ident};
 
 #[proc_macro]
-/// Creates a SQL identifier.
+/// Creates an SQL identifier.
 pub fn id(input: TokenStream) -> TokenStream {
     let ident: syn::Ident = parse_macro_input!(input);
     let re = Regex::new("^[A-Za-z_]([A-Za-z0-9_])*").unwrap();
@@ -22,6 +22,48 @@ pub fn id(input: TokenStream) -> TokenStream {
     }
 
     quote! { ::sql_builder::id(#str) }.into()
+}
+
+#[proc_macro]
+/// Creates an SQL literal.
+pub fn lit(input: TokenStream) -> TokenStream {
+    let lit: syn::Lit = parse_macro_input!(input);
+    match lit {
+        syn::Lit::Str(lit) => quote!{
+            sql_builder::char_str_lit(#lit)
+        },
+        syn::Lit::Float(lit) => {
+            if let Ok(double) = lit.base10_parse::<f64>() {
+                if double.is_sign_positive() {
+                    quote! {
+                        sql_builder::unsigned_numeric_lit(#double)
+                    }
+                } else {
+                    quote! {
+                        sql_builder::signed_numeric_lit(#double)
+                    }
+                }
+            } else {
+                unreachable!()
+            }
+        },
+        syn::Lit::Int(lit) => {
+            if let Ok(unsigned_int) = lit.base10_parse::<u64>() {
+                quote! {
+                    sql_builder::unsigned_numeric_lit(#unsigned_int)
+                }
+            } else if let Ok(signed_int) = lit.base10_parse::<i64>() {
+                quote! {
+                    sql_builder::signed_numeric_lit(#signed_int)
+                }
+            } else {
+                unreachable!()
+            }
+        }
+        _ => quote!{
+            compile_error!("literal not implemented yet")
+        },
+    }.into()
 }
 
 #[proc_macro]
