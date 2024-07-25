@@ -110,10 +110,8 @@ pub fn create_symbol_traits(_: TokenStream) -> TokenStream {
             };
 
             quote! {
-                /// Symbol #symbol
-                pub trait #trait_id
-                where Self: Sized + crate::ToQuery + #deps
-                //where Self: #deps
+                #[doc = #symbol]
+                pub trait #trait_id : Sized + crate::ToQuery + #deps
                 {
                     #body
                 }
