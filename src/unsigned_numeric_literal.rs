@@ -16,7 +16,7 @@ impl ToQuery for UnsignedNumericLiteral {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        _ctx: &mut crate::ToQueryContext,
     ) -> Result<(), std::io::Error> {
         match self {
             UnsignedNumericLiteral::Int(val) => write!(stream, "{}", val),

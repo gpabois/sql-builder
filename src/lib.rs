@@ -108,12 +108,7 @@ sql_builder_macros::check_symbol_loops!();
 
 pub mod helpers {
     use crate::{
-        grammar as G,
-        boolean_primary::NestedSearchCondition, 
-        column_name_list::ColumnNameLink, 
-        derived_column::AliasedColumn, 
-        select_sublist::SelectLink, 
-        table_reference_list::TableReferenceLink
+        boolean_primary::NestedSearchCondition, column_name_list::ColumnNameLink, derived_column::AliasedColumn, grammar as G, select_sublist::SelectLink, table_reference_list::TableReferenceLink, where_clause::Where
     };
     pub trait QuerySpecification {
         type TableExpression: G::TableExpression;
@@ -122,6 +117,13 @@ pub mod helpers {
         fn distinct(self) -> impl G::QuerySpecification;
 
         fn all(self) -> impl G::QuerySpecification;
+
+        /// Set the condition to filter the rows.
+        fn r#where(self, cond: impl G::SearchCondition) -> impl G::QuerySpecification 
+        where Self: G::QuerySpecification
+        {
+            self.transform_table_expression(|expr| expr.r#where(cond))
+        }
 
         fn transform_table_expression<NewTableExpr>(
             self,
@@ -149,6 +151,12 @@ pub mod helpers {
             self,
             transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
         ) -> impl G::TableExpression;
+
+        fn r#where(self, cond: impl G::SearchCondition) -> impl G::TableExpression 
+        where Self: G::TableExpression
+        {
+            self.transform_where(|_| Where::new(cond))
+        }
     }
 
     pub trait SelectSublist {

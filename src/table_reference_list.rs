@@ -4,7 +4,6 @@ use crate::ToQuery;
 use crate::grammar as G;
 use crate::helpers as H;
 
-
 #[derive(TableReferenceList)]
 pub struct TableReferenceLink<Head, Tail>
 where
