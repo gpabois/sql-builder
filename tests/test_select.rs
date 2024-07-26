@@ -1,4 +1,4 @@
-use sql_builder::{helpers::{QuerySpecification as _, SearchCondition, SelectSublist, ValueExpression as _}, lt, ToQuery};
+use sql_builder::{Symbol, helpers::{QuerySpecification as _, SearchCondition, SelectSublist, ValueExpression as _, TableExpression as _}, lt, ToQuery};
 pub use sql_builder::{id, select, lit, eq};
 
 #[test]

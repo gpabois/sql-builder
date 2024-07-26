@@ -1,7 +1,7 @@
 use sql_builder_macros::Insert;
 
 use crate::{
-    blank::Blank, grammar::{self, InsertColumnsAndSources, InsertionTarget}, ToQuery
+    blank::Blank, either::Either, from_constructor::FromConstructor, grammar::{self, InsertColumnsAndSources, InsertionTarget, OverrideClause}, ToQuery
 };
 
 use crate::grammar as G;
@@ -35,6 +35,7 @@ where
         }
     }
 
+    /// Transform the columns and sources
     fn transform_columns_and_sources<NewColumnsAndSources: InsertColumnsAndSources>(
         self,
         transform: impl FnOnce(Self::ColumnsAndSources) -> NewColumnsAndSources,
@@ -63,21 +64,100 @@ where
     }
 }
 
+impl<Lhs, Rhs> H::Insert for Either<Lhs, Rhs>
+where 
+    Lhs: G::Insert, 
+    Rhs: G::Insert 
+{
+    type Target = Either<Lhs::Target, Rhs::Target>;
+    type ColumnsAndSources = Either<Lhs::ColumnsAndSources, Rhs::ColumnsAndSources>;
+
+    fn transform_target<NewTarget: grammar::InsertionTarget>(
+        self,
+        transform: impl FnOnce(Self::Target) -> NewTarget,
+    ) -> impl grammar::Insert {
+        self.apply_with_args(transform, 
+            |lhs, transform| lhs.transform_target(|a |transform(Either::Left(a))), 
+            |rhs, transform| rhs.transform_target(|a| transform(Either::Right(a)))
+        )
+    }
+
+    fn transform_columns_and_sources<NewColumnsAndSources: grammar::InsertColumnsAndSources>(
+        self,
+        transform: impl FnOnce(Self::ColumnsAndSources) -> NewColumnsAndSources,
+    ) -> impl grammar::Insert {
+        self.apply_with_args(transform, 
+            |lhs, transform| lhs.transform_columns_and_sources(|a |transform(Either::Left(a))), 
+            |rhs, transform| rhs.transform_columns_and_sources(|a| transform(Either::Right(a)))
+        )
+    }
+}
+
+
 /// Begin an insert command
-pub struct BeginInsert<Target> 
+pub struct InsertFragment<Target> 
 where Target: G::InsertionTarget
 {
     target: Target
 }
 
-impl<Target> BeginInsert<Target> 
+impl<Target> InsertFragment<Target> 
 where Target: G::InsertionTarget
-{}
+{
+    pub fn columns<Columns>(self, columns: Columns) -> InsertFromConstructorFragment<Target, Blank, Columns> 
+    where Columns: G::ColumnNameList
+    {
+        InsertFromConstructorFragment {
+            target: self.target,
+            override_clause: Blank,
+            columns
+        }
+    }
+}
+
+pub struct InsertFromConstructorFragment<Target, Override, Columns>
+where Target: G::InsertionTarget, 
+      Columns: G::ColumnNameList,
+      Override: G::OverrideClause
+{
+    target: Target,
+    columns: Columns,
+    override_clause: Override,
+}
+
+impl<Target, Override, Columns> InsertFromConstructorFragment<Target, Override, Columns>
+    where Target: G::InsertionTarget, 
+          Columns: G::ColumnNameList,
+          Override: G::OverrideClause
+{
+    pub fn r#override<NewOverride: OverrideClause>(self, override_clause: NewOverride) ->  InsertFromConstructorFragment<Target, NewOverride, Columns> {
+        InsertFromConstructorFragment {
+            target: self.target,
+            columns: self.columns,
+            override_clause
+        }
+    }
+
+    /// Set the values to be inserted in the table
+    /// 
+    /// This creates a valid insert command.
+    pub fn values(self, values: impl G::ContextuallyTypedTableValueConstructor) -> impl G::Insert {
+        Insert {
+            target: self.target,
+            values: FromConstructor::new(
+                self.columns, 
+                self.override_clause, 
+                values
+            )
+        }
+    }
+}
 
 #[inline]
 /// Creates an insertion statement.
-pub fn insert<Target>(target: Target) -> BeginInsert<Target> 
+pub fn insert<Target>(target: Target) -> InsertFragment<Target> 
 where Target: G::InsertionTarget
 {
-    BeginInsert { target }
+    InsertFragment { target }
 }
+

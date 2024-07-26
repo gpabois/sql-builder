@@ -816,7 +816,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "QualifiedIdentifier" => SymbolDef::new(&["Identifier"], 0),
     "Qualifier" => SymbolDef::new(&[], 0),
 
-    "Insert" => SymbolDef::new(&[], 0),
+    "Insert" => SymbolDef::new(&[], WITH_HELPERS | WITH_REQUIRED_HELPERS_METHOD),
     "InsertionTarget" => SymbolDef::new(&["TableName"], 0),
     "InsertColumnsAndSources" => SymbolDef::new(&[
         "FromSubQuery",
@@ -827,22 +827,50 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "FromConstructor" => SymbolDef::new(&[
         "ContextuallyTypedTableValueConstructor"
     ], 0),
-    "InsertColumnList" => SymbolDef::new(&["ColumnNameList"], 0),
+    "InsertColumnList" => SymbolDef::new(&["ColumnNameList"], WITH_BLANK_IMPL),
+    "OverrideClause" => SymbolDef::new(&["OverridingUserValue", "OverridingSystemValue"], WITH_BLANK_IMPL),
+    "OverridingUserValue" => SymbolDef::new(&[], 0),
+    "OverridingSystemValue" => SymbolDef::new(&[], 0),
+    
     "FromDefault" => SymbolDef::new(&[], 0),
+
     "ContextuallyTypedTableValueConstructor" => SymbolDef::new(&[], 0),
-    "ContextuallyTypedRowValueExpressionList" => SymbolDef::new(&[], 0),
+    "ContextuallyTypedRowValueExpressionList" => SymbolDef::new(&["ContextuallyTypedRowValueExpression"], 0),
     "ContextuallyTypedRowValueExpression" => SymbolDef::new(&[], 0),
-    "ContextuallyTypedRowValueConstructor" => SymbolDef::new(&[], 0),
-    "ContextuallyTypedRowValueConstructorElementList" => SymbolDef::new(&[], 0),
-    "ContextuallyTypedRowValueConstructorElement" => SymbolDef::new(&[], 0),
+
+    /*
+        <contextually typed row value constructor>    ::=
+            <common value expression>
+            | <boolean value expression>
+            | <contextually typed value specification>
+            | ( <contextually typed row value constructor element list> )
+            | ROW ( <contextually typed row value constructor element list> )
+    */
+    "ContextuallyTypedRowValueConstructor" => SymbolDef::new(&[
+        "CommonValueExpression",
+        "BooleanValueExpression",
+        "ContextuallyTypedRowValueConstructorElementList"
+    ], 0),
+
+    /*
+        <row value constructor element list>    ::=
+            <row value constructor element>
+            | <row value constructor element list>, <row value constructor element>
+    */
+    "ContextuallyTypedRowValueConstructorElementList" => SymbolDef::new(&[
+        "ContextuallyTypedRowValueConstructorElement"
+    ], 0),
+
+    /*
+        <contextually typed row value constructor element> ::=
+            <value expression>
+            | <contextually typed value specification>
+    */
+    "ContextuallyTypedRowValueConstructorElement" => SymbolDef::new(&[
+        "ValueExpression"
+    ], 0),
+
     "ValueSpecification" => SymbolDef::new(&[], 0),
-
-
-
-    "QualifiedName" => SymbolDef::new(&[], 0),
-
-
-
 
     /*
         <search condition> ::= <boolean value expression>

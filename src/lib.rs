@@ -28,7 +28,6 @@
 mod error;
 
 mod group_by;
-mod qualified_name;
 mod select;
 mod select_sublist;
 mod table_expression;
@@ -51,6 +50,7 @@ mod boolean_primary;
 mod boolean_term;
 mod boolean_test;
 mod comparison_predicate;
+mod contextually_typed_row_value_constructor;
 mod contextually_typed_row_value_constructor_element_list;
 mod contextually_typed_row_value_expression_list;
 mod either;
@@ -65,6 +65,7 @@ mod character_string_literal;
 mod unsigned_numeric_literal;
 mod signed_numeric_literal;
 pub mod column_name_list;
+pub mod from_constructor;
 
 use std::io::Write;
 
@@ -106,10 +107,34 @@ pub use truth_value::{True, False, Unknown};
 
 sql_builder_macros::check_symbol_loops!();
 
+/// Common operations possible with the SQL symbols.
+pub trait Symbol: Sized {
+    /// Transform the current symbol if the predicate is true.
+    fn transform_if<T>(
+        self, 
+        predicate: bool, 
+        transform: impl FnOnce(Self) -> T
+    ) -> either::Either<Self, T> {
+        if predicate {
+            either::Either::Left(self)
+        } else {
+            either::Either::Right(transform(self))
+        }
+    }
+}
+
 pub mod helpers {
     use crate::{
-        boolean_primary::NestedSearchCondition, column_name_list::ColumnNameLink, derived_column::AliasedColumn, grammar as G, identifier_chain::IdentifierLink, select_sublist::SelectLink, table_reference_list::TableReferenceLink, where_clause::Where
+        grammar as G,
+        boolean_primary::NestedSearchCondition, 
+        column_name_list::ColumnNameLink, 
+        derived_column::AliasedColumn,  
+        identifier_chain::IdentifierLink, 
+        select_sublist::SelectLink, 
+        table_reference_list::TableReferenceLink, 
+        where_clause::Where
     };
+
     pub trait QuerySpecification {
         type TableExpression: G::TableExpression;
 
@@ -126,12 +151,14 @@ pub mod helpers {
             self.transform_table_expression(|expr| expr.r#where(cond))
         }
 
+        /// Transform the table expression
         fn transform_table_expression<NewTableExpr>(
             self,
             transform: impl FnOnce(Self::TableExpression) -> NewTableExpr,
         ) -> impl G::QuerySpecification
         where
             NewTableExpr: G::TableExpression;
+            
     }
 
     pub trait FromClause {
@@ -143,11 +170,13 @@ pub mod helpers {
         type FromClause: G::FromClause;
         type WhereClause: G::WhereClause;
 
+        /// Transform the from clause
         fn transform_from<NewFromClause: G::FromClause>(
             self,
             transform: impl FnOnce(Self::FromClause) -> NewFromClause,
         ) -> impl G::TableExpression;
 
+        /// Transform the where clause
         fn transform_where<NewWhereClause: G::WhereClause>(
             self,
             transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
@@ -193,6 +222,7 @@ pub mod helpers {
             transform: impl FnOnce(Self::ColumnsAndSources) -> NewColumnsAndSources,
         ) -> impl G::Insert;
     }
+    
     pub trait TableReferenceList {
         fn add_table_reference(self, table_ref: impl G::TableReference) -> impl G::TableReferenceList 
         where Self: G::TableReferenceList

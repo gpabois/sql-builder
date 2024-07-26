@@ -1,20 +1,23 @@
 use sql_builder_macros::ContextuallyTypedRowValueExpressionList;
 
-use crate::{
-    grammar::{ContextuallyTypedRowValueExpression, ContextuallyTypedRowValueExpressionList},
-    ToQuery,
-};
+use crate::grammar as G;
+
+use crate::ToQuery;
 
 #[derive(ContextuallyTypedRowValueExpressionList)]
-pub struct ContextuallyTypedRowExpressionLink<Head, Tail>(pub(crate) Head, pub(crate) Tail)
+pub struct ContextuallyTypedRowExpressionLink<Head, Tail>
 where
-    Head: ContextuallyTypedRowValueExpressionList,
-    Tail: ContextuallyTypedRowValueExpression;
+    Head: G::ContextuallyTypedRowValueExpressionList,
+    Tail: G::ContextuallyTypedRowValueExpression
+{
+    head: Head,
+    tail: Tail
+}
 
 impl<Head, Tail> ToQuery for ContextuallyTypedRowExpressionLink<Head, Tail>
 where
-    Head: ContextuallyTypedRowValueExpressionList,
-    Tail: ContextuallyTypedRowValueExpression,
+    Head: G::ContextuallyTypedRowValueExpressionList,
+    Tail: G::ContextuallyTypedRowValueExpression,
 {
     fn write<W: std::io::prelude::Write>(
         &self,

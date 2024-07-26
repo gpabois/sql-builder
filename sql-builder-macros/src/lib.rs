@@ -111,7 +111,7 @@ pub fn create_symbol_traits(_: TokenStream) -> TokenStream {
 
             quote! {
                 #[doc = #symbol]
-                pub trait #trait_id : Sized + crate::ToQuery + #deps
+                pub trait #trait_id : Sized + crate::Symbol + crate::ToQuery + #deps
                 {
                     #body
                 }
@@ -135,7 +135,7 @@ pub fn derive_either(input: TokenStream) -> TokenStream {
         .into();
     }
 
-    SYMBOL_MAP
+    let code = SYMBOL_MAP
         .entries()
         .map(|(&key, flags)| {
             let symbol_ident = Ident::new(key, Span::call_site());
@@ -170,8 +170,12 @@ pub fn derive_either(input: TokenStream) -> TokenStream {
 
             tokens
         })
-        .collect::<proc_macro2::TokenStream>()
-        .into()
+        .collect::<proc_macro2::TokenStream>();
+
+        quote! {
+            #code
+            impl<Lhs, Rhs> crate::Symbol for Either<Lhs, Rhs> {}
+        }.into()
 }
 
 #[proc_macro_derive(Blank)]
@@ -229,7 +233,7 @@ pub fn derive_blank(input: TokenStream) -> TokenStream {
 
 /// Creates a symbol derivation
 fn derive_symbol(symbol: &str, ast: &DeriveInput) -> proc_macro2::TokenStream {
-    fetch_deps(symbol)
+    let impls = fetch_deps(symbol)
         .chain([symbol])
         .map(|symbol| {
             impl_symbol_trait(
@@ -240,7 +244,16 @@ fn derive_symbol(symbol: &str, ast: &DeriveInput) -> proc_macro2::TokenStream {
                     .unwrap_or_else(|| panic!("missing symbol {symbol} in the map")),
             )
         })
-        .collect()
+        .collect::<proc_macro2::TokenStream>();
+
+    let (impl_generics, type_generics, where_clause) = ast.generics.split_for_impl();
+    let name = &ast.ident;
+
+    quote! {
+        #impls 
+
+        impl #impl_generics crate::Symbol for #name #type_generics #where_clause {}
+    }
 }
 
 fn impl_symbol_trait(symbol: &str, ast: &DeriveInput, def: &SymbolDef) -> proc_macro2::TokenStream {
