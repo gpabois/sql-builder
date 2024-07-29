@@ -1,6 +1,4 @@
-use crate::{
-    error::Error, ToQuery,
-};
+use crate::{error::Error, Database, ToQuery};
 use regex::Regex;
 use sql_builder_macros::Identifier;
 
@@ -26,13 +24,22 @@ impl<'s> TryFrom<&'s str> for IdentifierRef<'s> {
     }
 }
 
-impl ToQuery for IdentifierRef<'_> {
+impl<DB> ToQuery<DB> for IdentifierRef<'_>
+where
+    DB: Database,
+{
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        _ctx: &mut crate::ToQueryContext,
+        _ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         write!(stream, "{}", self.0)
+    }
+}
+
+impl std::fmt::Display for IdentifierRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 

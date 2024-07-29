@@ -1,7 +1,8 @@
 use sql_builder_macros::WhereClause;
 
-use crate::ToQuery;
 use crate::grammar as G;
+use crate::Database;
+use crate::ToQuery;
 
 #[derive(WhereClause)]
 /// WHERE <search_condition>
@@ -18,16 +19,27 @@ where
     }
 }
 
-impl<SearchCond> ToQuery for Where<SearchCond>
+impl<SearchCond> ::std::fmt::Display for Where<SearchCond>
 where
-    SearchCond: G::SearchCondition,
+    SearchCond: G::SearchCondition + std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "WHERE {}", self.search_cond)
+    }
+}
+
+impl<DB, SearchCond> ToQuery<DB> for Where<SearchCond>
+where
+    DB: Database,
+    SearchCond: G::SearchCondition + ToQuery<DB>,
 {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         write!(stream, "WHERE ")?;
         self.search_cond.write(stream, ctx)
     }
 }
+

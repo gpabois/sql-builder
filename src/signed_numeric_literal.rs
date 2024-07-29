@@ -1,24 +1,33 @@
 use sql_builder_macros::SignedNumericLiteral;
 
+use crate::Database;
 use crate::ToQuery;
-
 
 #[derive(SignedNumericLiteral)]
 pub enum SignedNumericLiteral {
     Int(i64),
-    Float(f64)
+    Float(f64),
 }
 
-impl ToQuery for SignedNumericLiteral {
+impl ::std::fmt::Display for SignedNumericLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Int(val) => write!(f, "{}", val),
+            Self::Float(val) => write!(f, "{}", val),
+        }
+    }
+}
+
+impl<DB> ToQuery<DB> for SignedNumericLiteral
+where
+    DB: Database,
+{
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        _ctx: &mut crate::ToQueryContext,
+        _ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
-        match self {
-            Self::Int(val) => write!(stream, "{}", val),
-            Self::Float(val) => write!(stream, "{}", val),
-        }
+        write!(stream, "{}", self)
     }
 }
 
@@ -35,6 +44,10 @@ impl From<f64> for SignedNumericLiteral {
 }
 
 #[inline]
-pub fn signed_numeric_lit<V>(value: V) -> SignedNumericLiteral where SignedNumericLiteral: From<V> {
+pub fn signed_numeric_lit<V>(value: V) -> SignedNumericLiteral
+where
+    SignedNumericLiteral: From<V>,
+{
     SignedNumericLiteral::from(value)
 }
+

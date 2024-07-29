@@ -1,35 +1,40 @@
-use crate::grammar as G;
-use sql_builder_macros::DynamicParameterSpecification;
 use sqlx::{Database, Encode};
-use std::marker::PhantomData;
+
+use crate::ToQuery;
 
 /// A bound parameter
 ///
 /// Is <term>
-pub struct Bound<DB: Database, P>
-where
-    for<'r> P: Encode<'r, DB>,
-{
-    param: P,
-    _pht: PhantomData<DB>,
+pub struct Bound<T> {
+    param: T,
 }
 
-impl<DB, P> Bound<DB, P>
-where
-    DB: Database,
-    for<'r> P: Encode<'r, DB>,
-{
-    pub fn new(param: P) -> Self {
-        Self {
-            param,
-            _pht: PhantomData,
-        }
+impl<T> Bound<T> {
+    pub fn new(param: T) -> Self {
+        Self { param }
     }
 }
 
-fn bind<DB: Database, P>(value: P) -> Bound<DB, P>
+impl<T> std::fmt::Display for Bound<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "?")
+    }
+}
+
+impl<DB, T> ToQuery<DB> for Bound<T>
 where
-    for<'r> P: Encode<'r, DB>,
+    DB: Database,
+    for<'r> T: Encode<'r, DB>,
 {
+    fn write<W: std::io::prelude::Write>(
+        &self,
+        stream: &mut W,
+        ctx: &mut crate::ToQueryContext<DB>,
+    ) -> Result<(), std::io::Error> {
+        todo!()
+    }
+}
+
+fn bind<T>(value: T) -> Bound<T> {
     Bound::new(value)
 }

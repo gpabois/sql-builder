@@ -53,7 +53,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
                 <select list>
                 <table expression>
     */
-    "QuerySpecification" => SymbolDef::new(&[], 
+    "QuerySpecification" => SymbolDef::new(&[],
         WITH_HELPERS | WITH_REQUIRED_HELPERS_METHOD
     ),
     /*
@@ -609,7 +609,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     ], 0),
 
     /*
-        <signed numeric literal> ::= 
+        <signed numeric literal> ::=
         [ <sign> ] <unsigned numeric literal>
     */
     "SignedNumericLiteral" => SymbolDef::new(&["UnsignedNumericLiteral"], 0),
@@ -639,10 +639,10 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <character string literal>    ::=
          [ <introducer> <character set specification> ]
          ' [ <character representation> ... ] '
-         [ { <separator> ' [ <character representation> ... ] ' }... ] 
+         [ { <separator> ' [ <character representation> ... ] ' }... ]
     */
     "CharacterStringLiteral" => SymbolDef::new(&[], 0),
-    
+
 
 
     ///////////////////////////
@@ -684,7 +684,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "ColumnReference" => SymbolDef::new(&["BasicIdentifierChain"], 0),
 
     /*
-        <column name list> ::= <column name> [ { <comma> <column name> }... ] 
+        <column name list> ::= <column name> [ { <comma> <column name> }... ]
     */
     "ColumnNameList" => SymbolDef::new(&["ColumnName"], WITH_HELPERS),
     /*
@@ -831,12 +831,14 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "OverrideClause" => SymbolDef::new(&["OverridingUserValue", "OverridingSystemValue"], WITH_BLANK_IMPL),
     "OverridingUserValue" => SymbolDef::new(&[], 0),
     "OverridingSystemValue" => SymbolDef::new(&[], 0),
-    
+
     "FromDefault" => SymbolDef::new(&[], 0),
 
-    "ContextuallyTypedTableValueConstructor" => SymbolDef::new(&[], 0),
-    "ContextuallyTypedRowValueExpressionList" => SymbolDef::new(&["ContextuallyTypedRowValueExpression"], 0),
-    "ContextuallyTypedRowValueExpression" => SymbolDef::new(&[], 0),
+    "ContextuallyTypedTableValueConstructor" => SymbolDef::new(&["ContextuallyTypedRowValueExpressionList"], 0),
+    "ContextuallyTypedRowValueExpressionList" => SymbolDef::new(&["ContextuallyTypedRowValueExpression"], WITH_HELPERS),
+    "ContextuallyTypedRowValueExpression" => SymbolDef::new(&[
+        "ContextuallyTypedRowValueConstructor"
+    ], 0),
 
     /*
         <contextually typed row value constructor>    ::=
@@ -859,7 +861,7 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     */
     "ContextuallyTypedRowValueConstructorElementList" => SymbolDef::new(&[
         "ContextuallyTypedRowValueConstructorElement"
-    ], 0),
+    ], WITH_HELPERS),
 
     /*
         <contextually typed row value constructor element> ::=

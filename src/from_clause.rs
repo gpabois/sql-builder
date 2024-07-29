@@ -1,9 +1,9 @@
 use sql_builder_macros::FromClause;
 
-use crate::{either::Either, table_expression::TableExpr, blank::Blank, ToQuery};
-
 use crate::grammar as G;
 use crate::helpers as H;
+use crate::Database;
+use crate::{blank::Blank, either::Either, table_expression::TableExpr, ToQuery};
 
 #[derive(FromClause)]
 pub struct From<Refs>
@@ -39,43 +39,40 @@ where
 {
     type FromClause = Self;
     type WhereClause = Blank;
+    type GroupByClause = Blank;
+    type HavingClause = Blank;
 
-    fn transform_from<NewFromClause>(
+    fn unwrap(
         self,
-        transform: impl FnOnce(Self::FromClause) -> NewFromClause,
-    ) -> impl G::TableExpression
-    where
-        NewFromClause: G::FromClause,
+    ) -> TableExpr<Self::FromClause, Self::WhereClause, Self::GroupByClause, Self::HavingClause>
     {
         TableExpr {
-            from_clause: transform(self),
-            where_clause: Blank,
-            group_by: Blank,
-            having: Blank,
-        }
-    }
-
-    fn transform_where<NewWhereClause: G::WhereClause>(
-        self,
-        transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
-    ) -> impl G::TableExpression {
-        TableExpr {
             from_clause: self,
-            where_clause: transform(Blank),
+            where_clause: Blank,
             group_by: Blank,
             having: Blank,
         }
     }
 }
 
-impl<TabRefs> ToQuery for From<TabRefs>
+impl<TabRefs> ::std::fmt::Display for From<TabRefs>
 where
-    TabRefs: G::TableReferenceList,
+    TabRefs: G::TableReferenceList + std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FROM {}", self.table_refs)
+    }
+}
+
+impl<DB, TabRefs> ToQuery<DB> for From<TabRefs>
+where
+    DB: Database,
+    TabRefs: G::TableReferenceList + ToQuery<DB>,
 {
     fn write<W: std::io::prelude::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         write!(stream, "FROM ")?;
         self.table_refs.write(stream, ctx)
@@ -105,12 +102,12 @@ where
 #[cfg(test)]
 mod test {
     use super::From;
-    use crate::{identifier::id, ToQuery};
+    use crate::identifier::id;
 
     #[test]
     fn test_from_identifier() {
         let clause = From::new(id("my_table"));
-        let sql = clause.to_raw_query().unwrap();
+        let sql = clause.to_string();
         assert_eq!(sql, "FROM my_table");
     }
 }

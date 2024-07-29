@@ -5,12 +5,28 @@ use crate::{from_clause::From, ToQuery};
 
 use crate::grammar as G;
 use crate::helpers as H;
+use crate::Database;
 
 /// The select quantifier, either ALL or DISTINCT.
 /// See [self::Select::distinct] or [self::Select::all]
 pub enum SetQuantifier {
     All,
     Distinct,
+}
+
+impl AsRef<str> for SetQuantifier {
+    fn as_ref(&self) -> &str {
+        match self {
+            SetQuantifier::All => "ALL",
+            SetQuantifier::Distinct => "DISTINC",
+        }
+    }
+}
+
+impl std::fmt::Display for SetQuantifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
+    }
 }
 
 #[inline]
@@ -24,7 +40,7 @@ pub enum SetQuantifier {
 /// .add_selection(id!(col2).alias_column(id!(aliased_column)))
 /// .add_selection(id!(col3));
 /// let table = id!(my_table);
-/// 
+///
 /// let stmt = select(selected_columns).from(table);
 ///
 /// let sql = sel.to_raw_query().unwrap();
@@ -49,7 +65,7 @@ impl<SeLs> BeginSelect<SeLs>
 where
     SeLs: G::SelectList,
 {
-    pub fn from<TabRefs>(self, table_refs: TabRefs) -> impl G::QuerySpecification
+    pub fn from<TabRefs>(self, table_refs: TabRefs) -> Select<SeLs, From<TabRefs>>
     where
         TabRefs: G::TableReferenceList,
     {
@@ -69,9 +85,9 @@ where
     TabExpr: G::TableExpression,
     SeLs: G::SelectList,
 {
-    quantifier: Option<SetQuantifier>,
-    select_list: SeLs,
-    table_expression: TabExpr,
+    pub quantifier: Option<SetQuantifier>,
+    pub select_list: SeLs,
+    pub table_expression: TabExpr,
 }
 
 impl<Selection, Table> H::QuerySpecification for Select<Selection, Table>
@@ -79,56 +95,46 @@ where
     Selection: G::SelectList,
     Table: G::TableExpression,
 {
+    type SelectList = Selection;
     type TableExpression = Table;
 
     #[inline]
-    fn distinct(self) -> impl G::QuerySpecification {
-        Select {
-            quantifier: Some(SetQuantifier::Distinct),
-            select_list: self.select_list,
-            table_expression: self.table_expression,
-        }
-    }
-
-    #[inline]
-    fn all(self) -> impl G::QuerySpecification {
-        Select {
-            quantifier: Some(SetQuantifier::All),
-            select_list: self.select_list,
-            table_expression: self.table_expression,
-        }
-    }
-
-    fn transform_table_expression<NewTableExpr>(
-        self,
-        transform: impl FnOnce(Self::TableExpression) -> NewTableExpr,
-    ) -> impl G::QuerySpecification
-    where
-        NewTableExpr: G::TableExpression,
-    {
-        Select {
-            quantifier: self.quantifier,
-            select_list: self.select_list,
-            table_expression: transform(self.table_expression),
-        }
+    fn unwrap(self) -> Self {
+        self
     }
 }
 
-impl<Selection, Table> ToQuery for Select<Selection, Table>
+impl<Selection, Table> std::fmt::Display for Select<Selection, Table>
 where
-    Selection: G::SelectList,
-    Table: G::TableExpression,
+    Selection: G::SelectList + std::fmt::Display,
+    Table: G::TableExpression + std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SELECT ")?;
+
+        match &self.quantifier {
+            Some(q) => write!(f, "{} ", q)?,
+            None => {}
+        };
+
+        write!(f, "{} {}", self.select_list, self.table_expression)
+    }
+}
+impl<DB, Selection, Table> ToQuery<DB> for Select<Selection, Table>
+where
+    DB: Database,
+    Selection: G::SelectList + ToQuery<DB>,
+    Table: G::TableExpression + ToQuery<DB>,
 {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         write!(stream, "SELECT ")?;
 
-        match self.quantifier {
-            Some(SetQuantifier::All) => write!(stream, "ALL ")?,
-            Some(SetQuantifier::Distinct) => write!(stream, "DISTINCT ")?,
+        match &self.quantifier {
+            Some(q) => write!(stream, "{}", q)?,
             None => {}
         };
 
@@ -139,31 +145,40 @@ where
 }
 
 impl<Lhs, Rhs> H::QuerySpecification for Either<Lhs, Rhs>
-where Lhs: G::QuerySpecification, Rhs: G::QuerySpecification 
+where
+    Lhs: G::QuerySpecification,
+    Rhs: G::QuerySpecification,
 {
-    type TableExpression = Either<
-        Lhs::TableExpression, 
-        Rhs::TableExpression
-    >;
+    type SelectList = Either<Lhs::SelectList, Rhs::SelectList>;
+    type TableExpression = Either<Lhs::TableExpression, Rhs::TableExpression>;
 
-    fn distinct(self) -> impl G::QuerySpecification {
-        self.apply(|lhs| lhs.distinct(), |rhs: Rhs| rhs.distinct())
-    }
+    fn unwrap(self) -> Select<Self::SelectList, Self::TableExpression> {
+        match self {
+            Either::Left(lhs) => {
+                let Select {
+                    quantifier,
+                    select_list,
+                    table_expression,
+                } = lhs.unwrap();
+                Select {
+                    quantifier,
+                    select_list: Either::Left(select_list),
+                    table_expression: Either::Left(table_expression),
+                }
+            }
+            Either::Right(rhs) => {
+                let Select {
+                    quantifier,
+                    select_list,
+                    table_expression,
+                } = rhs.unwrap();
 
-    fn all(self) -> impl G::QuerySpecification {
-        self.apply(|lhs| lhs.all(), |rhs: Rhs| rhs.all())
-
-    }
-
-    fn transform_table_expression<NewTableExpr>(
-        self,
-        transform: impl FnOnce(Self::TableExpression) -> NewTableExpr,
-    ) -> impl G::QuerySpecification
-    where
-        NewTableExpr: G::TableExpression {
-        self.apply_with_args(transform, |lhs, transform| 
-            lhs.transform_table_expression(|a| transform(Either::Left(a))), 
-            |rhs, transform| rhs.transform_table_expression(|a| transform(Either::Right(a))), )
-
+                Select {
+                    quantifier,
+                    select_list: Either::Right(select_list),
+                    table_expression: Either::Right(table_expression),
+                }
+            }
+        }
     }
 }

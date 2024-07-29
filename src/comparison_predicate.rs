@@ -1,8 +1,6 @@
 use sql_builder_macros::ComparisonPredicate;
 
-use crate::grammar as G;
-use crate::helpers as H;
-use crate::ToQuery;
+use crate::{grammar as G, Database, ToQuery};
 
 enum ComparisonKind {
     Equals,
@@ -26,13 +24,22 @@ impl AsRef<str> for ComparisonKind {
     }
 }
 
-impl ToQuery for ComparisonKind {
+impl<DB> ToQuery<DB> for ComparisonKind
+where
+    DB: Database,
+{
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        _ctx: &mut crate::ToQueryContext,
+        _ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         write!(stream, "{}", self.as_ref())
+    }
+}
+
+impl std::fmt::Display for ComparisonKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -47,15 +54,26 @@ where
     op: ComparisonKind,
 }
 
-impl<Lhs, Rhs> ToQuery for Compare<Lhs, Rhs>
+impl<Lhs, Rhs> ::std::fmt::Display for Compare<Lhs, Rhs>
 where
-    Lhs: G::RowValuePredicand,
-    Rhs: G::RowValuePredicand,
+    Lhs: G::RowValuePredicand + ::std::fmt::Display,
+    Rhs: G::RowValuePredicand + std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.lhs, self.op, self.rhs)
+    }
+}
+
+impl<DB, Lhs, Rhs> ToQuery<DB> for Compare<Lhs, Rhs>
+where
+    DB: Database,
+    Lhs: G::RowValuePredicand + ToQuery<DB>,
+    Rhs: G::RowValuePredicand + ToQuery<DB>,
 {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         self.lhs.write(stream, ctx)?;
         write!(stream, " ")?;
@@ -71,7 +89,7 @@ where
 /// ```sql
 /// <lhs> = <rhs>
 /// ```
-pub fn eq<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> impl G::ComparisonPredicate
+pub fn eq<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> Compare<Lhs, Rhs>
 where
     Lhs: G::RowValuePredicand,
     Rhs: G::RowValuePredicand,
@@ -90,10 +108,11 @@ where
 /// ```sql
 /// <lhs> <> <rhs>
 /// ```
-pub fn neq(
-    lhs: impl G::RowValuePredicand,
-    rhs: impl G::RowValuePredicand,
-) -> impl G::ComparisonPredicate {
+pub fn neq<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> Compare<Lhs, Rhs>
+where
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
+{
     Compare {
         lhs,
         rhs,
@@ -102,10 +121,11 @@ pub fn neq(
 }
 
 #[inline]
-pub fn lt(
-    lhs: impl G::RowValuePredicand,
-    rhs: impl G::RowValuePredicand,
-) -> impl G::ComparisonPredicate {
+pub fn lt<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> Compare<Lhs, Rhs>
+where
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
+{
     Compare {
         lhs,
         rhs,
@@ -114,10 +134,11 @@ pub fn lt(
 }
 
 #[inline]
-pub fn lte(
-    lhs: impl G::RowValuePredicand,
-    rhs: impl G::RowValuePredicand,
-) -> impl G::ComparisonPredicate {
+pub fn lte<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> Compare<Lhs, Rhs>
+where
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
+{
     Compare {
         lhs,
         rhs,
@@ -126,10 +147,11 @@ pub fn lte(
 }
 
 #[inline]
-pub fn gt(
-    lhs: impl G::RowValuePredicand,
-    rhs: impl G::RowValuePredicand,
-) -> impl G::ComparisonPredicate {
+pub fn gt<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> Compare<Lhs, Rhs>
+where
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
+{
     Compare {
         lhs,
         rhs,
@@ -138,10 +160,11 @@ pub fn gt(
 }
 
 #[inline]
-pub fn gte(
-    lhs: impl G::RowValuePredicand,
-    rhs: impl G::RowValuePredicand,
-) -> impl G::ComparisonPredicate {
+pub fn gte<Lhs, Rhs>(lhs: Lhs, rhs: Rhs) -> Compare<Lhs, Rhs>
+where
+    Lhs: G::RowValuePredicand,
+    Rhs: G::RowValuePredicand,
+{
     Compare {
         lhs,
         rhs,

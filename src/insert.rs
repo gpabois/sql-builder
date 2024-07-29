@@ -1,11 +1,16 @@
 use sql_builder_macros::Insert;
 
 use crate::{
-    blank::Blank, either::Either, from_constructor::FromConstructor, grammar::{self, InsertColumnsAndSources, InsertionTarget, OverrideClause}, ToQuery
+    blank::Blank,
+    either::Either,
+    from_constructor::FromConstructor,
+    grammar::{self, InsertColumnsAndSources, InsertionTarget, OverrideClause},
+    ToQuery,
 };
 
 use crate::grammar as G;
 use crate::helpers as H;
+use crate::Database;
 
 #[derive(Insert)]
 pub struct Insert<Target, Values>
@@ -47,15 +52,26 @@ where
     }
 }
 
-impl<Target, Values> ToQuery for Insert<Target, Values>
+impl<Target, Values> std::fmt::Display for Insert<Target, Values>
 where
-    Target: InsertionTarget,
-    Values: InsertColumnsAndSources,
+    Target: InsertionTarget + std::fmt::Display,
+    Values: InsertColumnsAndSources + std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "INSERT INTO {} {}", self.target, self.values)
+    }
+}
+
+impl<DB, Target, Values> ToQuery<DB> for Insert<Target, Values>
+where
+    DB: Database,
+    Target: InsertionTarget + ToQuery<DB>,
+    Values: InsertColumnsAndSources + ToQuery<DB>,
 {
     fn write<W: std::io::prelude::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         write!(stream, "INSERT INTO ")?;
         self.target.write(stream, ctx)?;
@@ -65,9 +81,9 @@ where
 }
 
 impl<Lhs, Rhs> H::Insert for Either<Lhs, Rhs>
-where 
-    Lhs: G::Insert, 
-    Rhs: G::Insert 
+where
+    Lhs: G::Insert,
+    Rhs: G::Insert,
 {
     type Target = Either<Lhs::Target, Rhs::Target>;
     type ColumnsAndSources = Either<Lhs::ColumnsAndSources, Rhs::ColumnsAndSources>;
@@ -76,9 +92,10 @@ where
         self,
         transform: impl FnOnce(Self::Target) -> NewTarget,
     ) -> impl grammar::Insert {
-        self.apply_with_args(transform, 
-            |lhs, transform| lhs.transform_target(|a |transform(Either::Left(a))), 
-            |rhs, transform| rhs.transform_target(|a| transform(Either::Right(a)))
+        self.apply_with_args(
+            transform,
+            |lhs, transform| lhs.transform_target(|a| transform(Either::Left(a))),
+            |rhs, transform| rhs.transform_target(|a| transform(Either::Right(a))),
         )
     }
 
@@ -86,39 +103,46 @@ where
         self,
         transform: impl FnOnce(Self::ColumnsAndSources) -> NewColumnsAndSources,
     ) -> impl grammar::Insert {
-        self.apply_with_args(transform, 
-            |lhs, transform| lhs.transform_columns_and_sources(|a |transform(Either::Left(a))), 
-            |rhs, transform| rhs.transform_columns_and_sources(|a| transform(Either::Right(a)))
+        self.apply_with_args(
+            transform,
+            |lhs, transform| lhs.transform_columns_and_sources(|a| transform(Either::Left(a))),
+            |rhs, transform| rhs.transform_columns_and_sources(|a| transform(Either::Right(a))),
         )
     }
 }
 
-
 /// Begin an insert command
-pub struct InsertFragment<Target> 
-where Target: G::InsertionTarget
+pub struct InsertFragment<Target>
+where
+    Target: G::InsertionTarget,
 {
-    target: Target
+    target: Target,
 }
 
-impl<Target> InsertFragment<Target> 
-where Target: G::InsertionTarget
+impl<Target> InsertFragment<Target>
+where
+    Target: G::InsertionTarget,
 {
-    pub fn columns<Columns>(self, columns: Columns) -> InsertFromConstructorFragment<Target, Blank, Columns> 
-    where Columns: G::ColumnNameList
+    pub fn columns<Columns>(
+        self,
+        columns: Columns,
+    ) -> InsertFromConstructorFragment<Target, Blank, Columns>
+    where
+        Columns: G::ColumnNameList,
     {
         InsertFromConstructorFragment {
             target: self.target,
             override_clause: Blank,
-            columns
+            columns,
         }
     }
 }
 
 pub struct InsertFromConstructorFragment<Target, Override, Columns>
-where Target: G::InsertionTarget, 
-      Columns: G::ColumnNameList,
-      Override: G::OverrideClause
+where
+    Target: G::InsertionTarget,
+    Columns: G::ColumnNameList,
+    Override: G::OverrideClause,
 {
     target: Target,
     columns: Columns,
@@ -126,38 +150,44 @@ where Target: G::InsertionTarget,
 }
 
 impl<Target, Override, Columns> InsertFromConstructorFragment<Target, Override, Columns>
-    where Target: G::InsertionTarget, 
-          Columns: G::ColumnNameList,
-          Override: G::OverrideClause
+where
+    Target: G::InsertionTarget,
+    Columns: G::ColumnNameList,
+    Override: G::OverrideClause,
 {
-    pub fn r#override<NewOverride: OverrideClause>(self, override_clause: NewOverride) ->  InsertFromConstructorFragment<Target, NewOverride, Columns> {
+    pub fn r#override<NewOverride: OverrideClause>(
+        self,
+        override_clause: NewOverride,
+    ) -> InsertFromConstructorFragment<Target, NewOverride, Columns> {
         InsertFromConstructorFragment {
             target: self.target,
             columns: self.columns,
-            override_clause
+            override_clause,
         }
     }
 
     /// Set the values to be inserted in the table
-    /// 
+    ///
     /// This creates a valid insert command.
-    pub fn values(self, values: impl G::ContextuallyTypedTableValueConstructor) -> impl G::Insert {
+    pub fn values<Value>(
+        self,
+        values: Value,
+    ) -> Insert<Target, FromConstructor<Columns, Override, Value>>
+    where
+        Value: G::ContextuallyTypedTableValueConstructor,
+    {
         Insert {
             target: self.target,
-            values: FromConstructor::new(
-                self.columns, 
-                self.override_clause, 
-                values
-            )
+            values: FromConstructor::new(self.columns, self.override_clause, values),
         }
     }
 }
 
 #[inline]
 /// Creates an insertion statement.
-pub fn insert<Target>(target: Target) -> InsertFragment<Target> 
-where Target: G::InsertionTarget
+pub fn insert<Target>(target: Target) -> InsertFragment<Target>
+where
+    Target: G::InsertionTarget,
 {
     InsertFragment { target }
 }
-

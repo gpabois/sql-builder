@@ -29,7 +29,7 @@ pub fn id(input: TokenStream) -> TokenStream {
 pub fn lit(input: TokenStream) -> TokenStream {
     let lit: syn::Lit = parse_macro_input!(input);
     match lit {
-        syn::Lit::Str(lit) => quote!{
+        syn::Lit::Str(lit) => quote! {
             sql_builder::char_str_lit(#lit)
         },
         syn::Lit::Float(lit) => {
@@ -46,7 +46,7 @@ pub fn lit(input: TokenStream) -> TokenStream {
             } else {
                 unreachable!()
             }
-        },
+        }
         syn::Lit::Int(lit) => {
             if let Ok(unsigned_int) = lit.base10_parse::<u64>() {
                 quote! {
@@ -60,10 +60,11 @@ pub fn lit(input: TokenStream) -> TokenStream {
                 unreachable!()
             }
         }
-        _ => quote!{
+        _ => quote! {
             compile_error!("literal not implemented yet")
         },
-    }.into()
+    }
+    .into()
 }
 
 #[proc_macro]
@@ -93,7 +94,10 @@ pub fn create_symbol_traits(_: TokenStream) -> TokenStream {
         .map(|(symbol, flags)| {
             let mut deps = fetch_deps(symbol)
                 .map(|dep| syn::Ident::new(dep, Span::call_site()))
-                .fold(quote! {crate::ToQuery}, |acc, dep| quote! { #acc + #dep });
+                .fold(
+                    quote! {Sized + crate::Symbol},
+                    |acc, dep| quote! { #acc + #dep },
+                );
 
             let trait_id = syn::Ident::new(symbol, Span::call_site());
 
@@ -111,7 +115,7 @@ pub fn create_symbol_traits(_: TokenStream) -> TokenStream {
 
             quote! {
                 #[doc = #symbol]
-                pub trait #trait_id : Sized + crate::Symbol + crate::ToQuery + #deps
+                pub trait #trait_id : #deps
                 {
                     #body
                 }
@@ -154,17 +158,19 @@ pub fn derive_either(input: TokenStream) -> TokenStream {
                 {
                     #body_impl
                 }
+
+
             };
 
             if flags.with_helpers() && !flags.helpers_require_methods_implementations() {
                 tokens = quote! {
                     #tokens
-                    
+
                     impl<Lhs, Rhs> crate::helpers:: #symbol_ident for #ident<Lhs, Rhs>
                         where
                             Lhs: crate::grammar:: #symbol_ident,
                             Rhs: crate::grammar:: #symbol_ident
-                    {}              
+                    {}
                 }
             }
 
@@ -172,10 +178,11 @@ pub fn derive_either(input: TokenStream) -> TokenStream {
         })
         .collect::<proc_macro2::TokenStream>();
 
-        quote! {
-            #code
-            impl<Lhs, Rhs> crate::Symbol for Either<Lhs, Rhs> {}
-        }.into()
+    quote! {
+        #code
+        impl<Lhs, Rhs> crate::Symbol for Either<Lhs, Rhs> {}
+    }
+    .into()
 }
 
 #[proc_macro_derive(Blank)]
@@ -215,13 +222,14 @@ pub fn derive_blank(input: TokenStream) -> TokenStream {
                     #body
                 }
             };
-            
+
             if flags.with_helpers() && !flags.helpers_require_methods_implementations() {
                 tokens = quote! {
                     #tokens
 
                     impl crate::helpers::#symbol_ident for Blank
                     {}
+
                 }
             }
 
@@ -250,9 +258,10 @@ fn derive_symbol(symbol: &str, ast: &DeriveInput) -> proc_macro2::TokenStream {
     let name = &ast.ident;
 
     quote! {
-        #impls 
+        #impls
 
         impl #impl_generics crate::Symbol for #name #type_generics #where_clause {}
+
     }
 }
 
@@ -274,9 +283,7 @@ fn impl_symbol_trait(symbol: &str, ast: &DeriveInput, def: &SymbolDef) -> proc_m
     };
 
     // Automatic helper trait implementation.
-    if def.with_helpers() 
-        && !def.helpers_require_methods_implementations() 
-    {
+    if def.with_helpers() && !def.helpers_require_methods_implementations() {
         tokens = quote! {
             #tokens
 
@@ -284,5 +291,5 @@ fn impl_symbol_trait(symbol: &str, ast: &DeriveInput, def: &SymbolDef) -> proc_m
         };
     }
 
-    tokens.into()
+    tokens
 }

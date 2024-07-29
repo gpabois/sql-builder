@@ -1,30 +1,30 @@
 //! SQL Builder
-//! 
+//!
 //! A crate to build SQL queries that comply with the ISO/IEC 9075-2:2003, at compile-time.
-//! 
+//!
 //! # Notes
-//! Currently, only a fragment of the standard is implemented. 
-//! 
+//! Currently, only a fragment of the standard is implemented.
+//!
 //! The current development roadmap is to allow to build most of the *simple* queries
 //! (direct SELECT, INSERT, UPDATE and DELETE commands).
-//! 
+//!
 //! # How to build a SELECT query
 //! ```ignore
-//! use sql_builder::{select, id};
+//! use sql_builder::{select, id, prelude::*};
 //!
 //! let selected_columns = id!(col1)
 //! .add_selection(id!(col2).alias_column(id!(aliased_column)))
 //! .add_selection(id!(col3));
 //! let table = id!(my_table);
-//! 
+//!
 //! let stmt = select(selected_columns).from(table);
 //!
 //! let sql = sel.to_raw_query().unwrap();
 //! assert_eq!(sql, "SELECT col1, col2 AS aliased_column, col3 FROM my_table");
 //! ```
-//! 
+//!
 //! # How to build an INSERT query
-//! 
+//!
 mod error;
 
 mod group_by;
@@ -35,7 +35,6 @@ mod table_reference_list;
 
 mod bind;
 mod identifier;
-mod literal;
 mod numeric_value_expression;
 mod term;
 mod where_clause;
@@ -49,32 +48,50 @@ mod boolean_factor;
 mod boolean_primary;
 mod boolean_term;
 mod boolean_test;
+mod character_string_literal;
+mod column_name_list;
 mod comparison_predicate;
 mod contextually_typed_row_value_constructor;
 mod contextually_typed_row_value_constructor_element_list;
 mod contextually_typed_row_value_expression_list;
 mod either;
+mod from_constructor;
 mod having_clause;
 mod identifier_chain;
 mod insert;
 mod schema_name;
 mod search_condition;
+mod signed_numeric_literal;
 mod truth_value;
 mod unqualified_schema_name;
-mod character_string_literal;
 mod unsigned_numeric_literal;
-mod signed_numeric_literal;
-pub mod column_name_list;
-pub mod from_constructor;
 
-use std::io::Write;
+pub use sqlx::Database;
+use std::{io::Write, marker::PhantomData};
 
-#[derive(Default)]
-pub struct ToQueryContext {}
-pub trait ToQuery {
+pub struct ToQueryContext<DB>
+where
+    DB: Database,
+{
+    _pht: PhantomData<DB>,
+}
+
+impl<DB> Default for ToQueryContext<DB>
+where
+    DB: Database,
+{
+    fn default() -> Self {
+        Self { _pht: PhantomData }
+    }
+}
+
+pub trait ToQuery<DB>: std::fmt::Display
+where
+    DB: Database,
+{
     fn to_raw_query(&self) -> Result<String, Box<dyn std::error::Error>> {
         let mut bytes = Vec::<u8>::default();
-        let mut ctx = ToQueryContext::default();
+        let mut ctx = ToQueryContext::<DB>::default();
         self.write(&mut bytes, &mut ctx)?;
         let sql = String::from_utf8(bytes)?;
         Ok(sql)
@@ -83,27 +100,26 @@ pub trait ToQuery {
     fn write<W: Write>(
         &self,
         stream: &mut W,
-        ctx: &mut ToQueryContext,
+        ctx: &mut ToQueryContext<DB>,
     ) -> Result<(), std::io::Error>;
 }
 
 pub use boolean_factor::not;
 pub use boolean_term::and;
 pub use boolean_test::{is_not_truth_value, is_truth_value};
+pub use character_string_literal::char_str_lit;
 pub use comparison_predicate::{eq, gt, gte, lt, lte, neq};
+pub use error::Error;
 pub use identifier::id;
-pub use literal::lit;
+pub use insert::insert;
 pub use numeric_value_expression::{add, sub};
 pub use search_condition::or;
 pub use select::select;
-pub use insert::insert;
-pub use term::{div, mult};
-pub use character_string_literal::char_str_lit;
-pub use unsigned_numeric_literal::unsigned_numeric_lit;
 pub use signed_numeric_literal::signed_numeric_lit;
-pub use error::Error;
 pub use sql_builder_macros::{id, lit};
-pub use truth_value::{True, False, Unknown};
+pub use term::{div, mult};
+pub use truth_value::{False, True, Unknown};
+pub use unsigned_numeric_literal::unsigned_numeric_lit;
 
 sql_builder_macros::check_symbol_loops!();
 
@@ -111,11 +127,11 @@ sql_builder_macros::check_symbol_loops!();
 pub trait Symbol: Sized {
     /// Transform the current symbol if the predicate is true.
     fn transform_if<T>(
-        self, 
-        predicate: bool, 
-        transform: impl FnOnce(Self) -> T
+        self,
+        predicate: bool,
+        transform: impl FnOnce(Self) -> T,
     ) -> either::Either<Self, T> {
-        if predicate {
+        if !predicate {
             either::Either::Left(self)
         } else {
             either::Either::Right(transform(self))
@@ -123,30 +139,73 @@ pub trait Symbol: Sized {
     }
 }
 
+pub mod prelude {
+    pub use crate::helpers::*;
+    pub use crate::Symbol;
+    pub use crate::ToQuery;
+}
+
 pub mod helpers {
     use crate::{
-        grammar as G,
-        boolean_primary::NestedSearchCondition, 
-        column_name_list::ColumnNameLink, 
-        derived_column::AliasedColumn,  
-        identifier_chain::IdentifierLink, 
-        select_sublist::SelectLink, 
-        table_reference_list::TableReferenceLink, 
-        where_clause::Where
+        boolean_primary::NestedSearchCondition, boolean_term::And,
+        column_name_list::ColumnNameLink, contextually_typed_row_value_constructor::RowValue,
+        contextually_typed_row_value_expression_list::ContextuallyTypedRowExpressionLink,
+        derived_column::AliasedColumn, grammar as G, identifier_chain::IdentifierLink,
+        search_condition::Or, select::Select, select_sublist::SelectLink,
+        table_expression::TableExpr, table_reference_list::TableReferenceLink, where_clause::Where,
     };
 
-    pub trait QuerySpecification {
+    pub trait QuerySpecification: Sized {
+        type SelectList: G::SelectList;
         type TableExpression: G::TableExpression;
 
+        /// Unwrap the query specification
+        fn unwrap(self) -> Select<Self::SelectList, Self::TableExpression>;
+
         /// Removed duplicated rows
-        fn distinct(self) -> impl G::QuerySpecification;
-        
+        fn distinct(self) -> Select<Self::SelectList, Self::TableExpression> {
+            let Select {
+                quantifier: _,
+                select_list,
+                table_expression,
+            } = self.unwrap();
+            Select {
+                quantifier: Some(crate::select::SetQuantifier::Distinct),
+                select_list,
+                table_expression,
+            }
+        }
+
         /// All rows are selected
-        fn all(self) -> impl G::QuerySpecification;
+        fn all(self) -> Select<Self::SelectList, Self::TableExpression> {
+            let Select {
+                quantifier,
+                select_list,
+                table_expression,
+            } = self.unwrap();
+            Select {
+                quantifier: Some(crate::select::SetQuantifier::All),
+                select_list,
+                table_expression,
+            }
+        }
 
         /// Set the condition to filter the rows.
-        fn r#where(self, cond: impl G::SearchCondition) -> impl G::QuerySpecification 
-        where Self: G::QuerySpecification
+        fn r#where<SearchCond>(
+            self,
+            cond: SearchCond,
+        ) -> Select<
+            <Self as QuerySpecification>::SelectList,
+            TableExpr<
+                <Self::TableExpression as TableExpression>::FromClause,
+                Where<SearchCond>,
+                <Self::TableExpression as TableExpression>::GroupByClause,
+                <Self::TableExpression as TableExpression>::HavingClause,
+            >,
+        >
+        where
+            Self: G::QuerySpecification,
+            SearchCond: G::SearchCondition,
         {
             self.transform_table_expression(|expr| expr.r#where(cond))
         }
@@ -155,10 +214,22 @@ pub mod helpers {
         fn transform_table_expression<NewTableExpr>(
             self,
             transform: impl FnOnce(Self::TableExpression) -> NewTableExpr,
-        ) -> impl G::QuerySpecification
+        ) -> Select<<Self as QuerySpecification>::SelectList, NewTableExpr>
         where
-            NewTableExpr: G::TableExpression;
-            
+            NewTableExpr: G::TableExpression,
+        {
+            let Select {
+                quantifier,
+                select_list,
+                table_expression,
+            } = self.unwrap();
+
+            Select {
+                quantifier,
+                select_list,
+                table_expression: transform(table_expression),
+            }
+        }
     }
 
     pub trait FromClause {
@@ -166,33 +237,80 @@ pub mod helpers {
         fn add_table_reference(self, table_refs: impl G::TableReference) -> impl G::FromClause;
     }
 
-    pub trait TableExpression {
+    pub trait TableExpression: Sized {
         type FromClause: G::FromClause;
         type WhereClause: G::WhereClause;
+        type GroupByClause: G::GroupByClause;
+        type HavingClause: G::HavingClause;
+
+        fn unwrap(
+            self,
+        ) -> TableExpr<Self::FromClause, Self::WhereClause, Self::GroupByClause, Self::HavingClause>;
 
         /// Transform the from clause
         fn transform_from<NewFromClause: G::FromClause>(
             self,
             transform: impl FnOnce(Self::FromClause) -> NewFromClause,
-        ) -> impl G::TableExpression;
+        ) -> TableExpr<NewFromClause, Self::WhereClause, Self::GroupByClause, Self::HavingClause>
+        {
+            let TableExpr {
+                from_clause,
+                where_clause,
+                group_by,
+                having,
+            } = self.unwrap();
+
+            TableExpr {
+                from_clause: transform(from_clause),
+                where_clause,
+                group_by,
+                having,
+            }
+        }
 
         /// Transform the where clause
         fn transform_where<NewWhereClause: G::WhereClause>(
             self,
             transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
-        ) -> impl G::TableExpression;
+        ) -> TableExpr<Self::FromClause, NewWhereClause, Self::GroupByClause, Self::HavingClause>
+        {
+            let TableExpr {
+                from_clause,
+                where_clause,
+                group_by,
+                having,
+            } = self.unwrap();
 
-        fn r#where(self, cond: impl G::SearchCondition) -> impl G::TableExpression 
-        where Self: G::TableExpression
+            TableExpr {
+                from_clause,
+                where_clause: transform(where_clause),
+                group_by,
+                having,
+            }
+        }
+
+        fn r#where<Cond>(
+            self,
+            cond: Cond,
+        ) -> TableExpr<
+            <Self as TableExpression>::FromClause,
+            Where<Cond>,
+            <Self as TableExpression>::GroupByClause,
+            <Self as TableExpression>::HavingClause,
+        >
+        where
+            Self: G::TableExpression,
+            Cond: G::SearchCondition,
         {
             self.transform_where(|_| Where::new(cond))
         }
     }
 
     pub trait SelectSublist {
-        fn add_selection(self, element: impl G::SelectSublistElement) -> impl G::SelectSublist
+        fn add_selection<Element>(self, element: Element) -> SelectLink<Self, Element>
         where
             Self: G::SelectSublist,
+            Element: G::SelectSublistElement,
         {
             SelectLink::new(self, element)
         }
@@ -200,11 +318,12 @@ pub mod helpers {
 
     pub trait ValueExpression {
         /// Alias the column.
-        fn alias_column(self, id: impl G::ColumnName) -> impl G::DerivedColumn
+        fn alias_column<Alias>(self, alias: Alias) -> AliasedColumn<Self, Alias>
         where
             Self: G::ValueExpression,
+            Alias: G::ColumnName,
         {
-            AliasedColumn::new(self, id)
+            AliasedColumn::new(self, alias)
         }
     }
 
@@ -222,10 +341,14 @@ pub mod helpers {
             transform: impl FnOnce(Self::ColumnsAndSources) -> NewColumnsAndSources,
         ) -> impl G::Insert;
     }
-    
+
     pub trait TableReferenceList {
-        fn add_table_reference(self, table_ref: impl G::TableReference) -> impl G::TableReferenceList 
-        where Self: G::TableReferenceList
+        fn add_table_reference(
+            self,
+            table_ref: impl G::TableReference,
+        ) -> impl G::TableReferenceList
+        where
+            Self: G::TableReferenceList,
         {
             TableReferenceLink::new(self, table_ref)
         }
@@ -233,16 +356,20 @@ pub mod helpers {
     pub trait TableReference: Sized {}
 
     pub trait ColumnNameList {
-        fn add_column(self, column_name: impl G::ColumnName) -> impl G::ColumnNameList 
-        where Self: G::ColumnNameList
+        fn add_column<Name>(self, column_name: Name) -> ColumnNameLink<Self, Name>
+        where
+            Self: G::ColumnNameList,
+            Name: G::ColumnName,
         {
             ColumnNameLink::new(self, column_name)
         }
     }
 
     pub trait IdentifierChain {
-        fn add_identifier(self, id: impl G::Identifier) -> impl G::IdentifierChain 
-        where Self: G::IdentifierChain
+        fn add_identifier<Id>(self, id: Id) -> IdentifierLink<Self, Id>
+        where
+            Self: G::IdentifierChain,
+            Id: G::Identifier,
         {
             IdentifierLink::new(self, id)
         }
@@ -258,9 +385,10 @@ pub mod helpers {
             NestedSearchCondition::new(self)
         }
 
-        fn or(self, rhs: impl G::BooleanTerm) -> impl G::SearchCondition
+        fn or<Term>(self, rhs: Term) -> Or<Self, Term>
         where
             Self: G::SearchCondition,
+            Term: G::BooleanTerm,
         {
             crate::or(self, rhs)
         }
@@ -270,8 +398,35 @@ pub mod helpers {
     where
         Self: Sized + G::BooleanTerm,
     {
-        fn and(self, rhs: impl G::BooleanFactor) -> impl G::BooleanTerm {
+        fn and<Factor>(self, rhs: Factor) -> And<Self, Factor>
+        where
+            Factor: G::BooleanFactor,
+        {
             crate::and(self, rhs)
+        }
+    }
+
+    pub trait ContextuallyTypedRowValueExpressionList: Sized {
+        /// add a new row value in the list
+        fn add_row_value<Value>(
+            self,
+            value: Value,
+        ) -> ContextuallyTypedRowExpressionLink<Self, Value>
+        where
+            Self: G::ContextuallyTypedRowValueExpressionList,
+            Value: G::ContextuallyTypedRowValueExpression,
+        {
+            ContextuallyTypedRowExpressionLink::new(self, value)
+        }
+    }
+
+    pub trait ContextuallyTypedRowValueConstructorElementList: Sized {
+        /// Transform a list of row value elements into a row value.
+        fn into_row_value(self) -> RowValue<Self>
+        where
+            Self: G::ContextuallyTypedRowValueConstructorElementList,
+        {
+            RowValue::new(self)
         }
     }
 }

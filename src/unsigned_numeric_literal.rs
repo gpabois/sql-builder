@@ -1,24 +1,33 @@
 use sql_builder_macros::UnsignedNumericLiteral;
 
+use crate::Database;
 use crate::ToQuery;
-
 
 #[derive(UnsignedNumericLiteral)]
 pub enum UnsignedNumericLiteral {
     Int(u64),
-    Float(f64)
+    Float(f64),
 }
 
-impl ToQuery for UnsignedNumericLiteral {
+impl std::fmt::Display for UnsignedNumericLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UnsignedNumericLiteral::Int(val) => write!(f, "{}", val),
+            UnsignedNumericLiteral::Float(val) => write!(f, "{}", val),
+        }
+    }
+}
+
+impl<DB> ToQuery<DB> for UnsignedNumericLiteral
+where
+    DB: Database,
+{
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        _ctx: &mut crate::ToQueryContext,
+        _ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
-        match self {
-            UnsignedNumericLiteral::Int(val) => write!(stream, "{}", val),
-            UnsignedNumericLiteral::Float(val) => write!(stream, "{}", val),
-        }
+        write!(stream, "{}", self)
     }
 }
 
@@ -35,6 +44,10 @@ impl From<f64> for UnsignedNumericLiteral {
 }
 
 #[inline]
-pub fn unsigned_numeric_lit<V>(value: V) -> UnsignedNumericLiteral where UnsignedNumericLiteral: From<V> {
+pub fn unsigned_numeric_lit<V>(value: V) -> UnsignedNumericLiteral
+where
+    UnsignedNumericLiteral: From<V>,
+{
     UnsignedNumericLiteral::from(value)
 }
+

@@ -2,7 +2,7 @@ use sql_builder_macros::SchemaName;
 
 use crate::{
     grammar::{Identifier, UnqualifiedSchemaName},
-    ToQuery,
+    Database, ToQuery,
 };
 
 #[derive(SchemaName)]
@@ -15,15 +15,26 @@ where
     unqualified_schema_name: SchemName,
 }
 
-impl<CatName, SchemName> ToQuery for SchemaName<CatName, SchemName>
+impl<CatName, SchemName> ::std::fmt::Display for SchemaName<CatName, SchemName>
 where
-    CatName: Identifier,
-    SchemName: UnqualifiedSchemaName,
+    CatName: Identifier + std::fmt::Display,
+    SchemName: UnqualifiedSchemaName + std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}.{}", self.catalog_name, self.unqualified_schema_name)
+    }
+}
+
+impl<DB, CatName, SchemName> ToQuery<DB> for SchemaName<CatName, SchemName>
+where
+    DB: Database,
+    CatName: Identifier + ToQuery<DB>,
+    SchemName: UnqualifiedSchemaName + ToQuery<DB>,
 {
     fn write<W: std::io::prelude::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         self.catalog_name.write(stream, ctx)?;
         write!(stream, ".")?;

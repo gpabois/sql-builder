@@ -1,5 +1,5 @@
-use sql_builder::{Symbol, helpers::{QuerySpecification as _, SearchCondition, SelectSublist, ValueExpression as _, TableExpression as _}, lt, ToQuery};
-pub use sql_builder::{id, select, lit, eq};
+use sql_builder::{eq, id, lit, select};
+use sql_builder::{lt, prelude::*};
 
 #[test]
 fn test_select_basic() {
@@ -10,7 +10,7 @@ fn test_select_basic() {
     let table = id("my_table");
     let stmt = select(selected_columns).from(table);
 
-    let sql = stmt.to_raw_query().unwrap();
+    let sql = stmt.to_string();
     assert_eq!(
         sql,
         "SELECT col1, col2 AS aliased_column, col3 FROM my_table"
@@ -19,20 +19,21 @@ fn test_select_basic() {
 
 #[test]
 fn test_select_where() {
+    let cond = eq(id!(col1), lit!(10)).or(lt(id!(col2), lit!(20)));
     let stmt = select(id!(col1).add_selection(id!(col2)))
         .from(id!(my_table))
-        .r#where(
-            eq(id!(col1), lit!(10))
-                .or(lt(id!(col2), lit!(20)))
-        );
+        .r#where(cond);
 
-    let sql = stmt.to_raw_query().unwrap();
-    assert_eq!(sql, "SELECT col1, col2 FROM my_table WHERE col1 = 10 OR col2 < 20");
+    let sql = stmt.to_string();
+    assert_eq!(
+        sql,
+        "SELECT col1, col2 FROM my_table WHERE col1 = 10 OR col2 < 20"
+    );
 }
 
 #[test]
 fn test_select_distinct() {
     let stmt = select(id("col1")).from(id("my_table")).distinct();
-    let sql = stmt.to_raw_query().unwrap();
+    let sql = stmt.to_string();
     assert_eq!(sql, "SELECT DISTINCT col1 FROM my_table");
 }

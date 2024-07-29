@@ -1,10 +1,6 @@
 use sql_builder_macros::TableExpression;
 
-use crate::{
-    either::Either,
-    grammar::{FromClause, TableExpression, WhereClause},
-    blank::Blank, ToQuery,
-};
+use crate::{blank::Blank, either::Either, Database, ToQuery};
 
 use crate::grammar as G;
 use crate::helpers as H;
@@ -17,10 +13,10 @@ pub struct TableExpr<
     GroupBy: G::GroupByClause,
     Having: G::HavingClause,
 > {
-    pub(crate) from_clause: From,
-    pub(crate) where_clause: Where,
-    pub(crate) group_by: GroupBy,
-    pub(crate) having: Having,
+    pub from_clause: From,
+    pub where_clause: Where,
+    pub group_by: GroupBy,
+    pub having: Having,
 }
 
 impl<From, Where, GroupBy, Having> H::TableExpression for TableExpr<From, Where, GroupBy, Having>
@@ -32,43 +28,55 @@ where
 {
     type FromClause = From;
     type WhereClause = Where;
+    type GroupByClause = GroupBy;
+    type HavingClause = Having;
 
-    fn transform_from<NewFromClause: FromClause>(
+    fn unwrap(
         self,
-        transform: impl FnOnce(Self::FromClause) -> NewFromClause,
-    ) -> impl TableExpression {
-        TableExpr {
-            from_clause: transform(self.from_clause),
-            where_clause: self.where_clause,
-            group_by: self.group_by,
-            having: self.having,
-        }
-    }
-
-    fn transform_where<NewWhereClause: WhereClause>(
-        self,
-        transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
-    ) -> impl TableExpression {
-        TableExpr {
-            from_clause: self.from_clause,
-            where_clause: transform(self.where_clause),
-            group_by: self.group_by,
-            having: self.having,
-        }
+    ) -> TableExpr<Self::FromClause, Self::WhereClause, Self::GroupByClause, Self::HavingClause>
+    {
+        self
     }
 }
 
-impl<From, Where, GroupBy, Having> ToQuery for TableExpr<From, Where, GroupBy, Having>
+impl<From, Where, GroupBy, Having> std::fmt::Display for TableExpr<From, Where, GroupBy, Having>
 where
-    From: G::FromClause,
-    Where: G::WhereClause,
-    GroupBy: G::GroupByClause,
-    Having: G::HavingClause,
+    From: G::FromClause + std::fmt::Display,
+    Where: G::WhereClause + std::fmt::Display,
+    GroupBy: G::GroupByClause + std::fmt::Display,
+    Having: G::HavingClause + std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.from_clause)?;
+
+        if Where::IS_IMPL {
+            write!(f, " {}", self.where_clause)?;
+        }
+
+        if GroupBy::IS_IMPL {
+            write!(f, " {}", self.group_by)?;
+        }
+
+        if Having::IS_IMPL {
+            write!(f, " {}", self.having)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<DB, From, Where, GroupBy, Having> ToQuery<DB> for TableExpr<From, Where, GroupBy, Having>
+where
+    DB: Database,
+    From: G::FromClause + ToQuery<DB>,
+    Where: G::WhereClause + ToQuery<DB>,
+    GroupBy: G::GroupByClause + ToQuery<DB>,
+    Having: G::HavingClause + ToQuery<DB>,
 {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         self.from_clause.write(stream, ctx)?;
 
@@ -94,26 +102,16 @@ where
 impl H::TableExpression for Blank {
     type FromClause = Blank;
     type WhereClause = Blank;
+    type HavingClause = Blank;
+    type GroupByClause = Blank;
 
-    fn transform_from<NewFromClause: FromClause>(
+    fn unwrap(
         self,
-        transform: impl FnOnce(Self::FromClause) -> NewFromClause,
-    ) -> impl TableExpression {
-        TableExpr {
-            from_clause: transform(Blank),
-            where_clause: Blank,
-            group_by: Blank,
-            having: Blank,
-        }
-    }
-
-    fn transform_where<NewWhereClause: WhereClause>(
-        self,
-        transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
-    ) -> impl TableExpression {
+    ) -> TableExpr<Self::FromClause, Self::WhereClause, Self::GroupByClause, Self::HavingClause>
+    {
         TableExpr {
             from_clause: Blank,
-            where_clause: transform(Blank),
+            where_clause: Blank,
             group_by: Blank,
             having: Blank,
         }
@@ -127,32 +125,42 @@ where
 {
     type FromClause = Either<Lhs::FromClause, Rhs::FromClause>;
     type WhereClause = Either<Lhs::WhereClause, Rhs::WhereClause>;
+    type GroupByClause = Either<Lhs::GroupByClause, Rhs::GroupByClause>;
+    type HavingClause = Either<Lhs::HavingClause, Rhs::HavingClause>;
 
-    fn transform_from<NewFromClause: FromClause>(
+    fn unwrap(
         self,
-        transform: impl FnOnce(Self::FromClause) -> NewFromClause,
-    ) -> impl G::TableExpression {
+    ) -> TableExpr<Self::FromClause, Self::WhereClause, Self::GroupByClause, Self::HavingClause>
+    {
         match self {
-            Either::Left(lhs) => {
-                Either::Left(lhs.transform_from(|from_clause| transform(Either::Left(from_clause))))
+            Either::Left(left) => {
+                let TableExpr {
+                    from_clause,
+                    where_clause,
+                    group_by,
+                    having,
+                } = left.unwrap();
+                TableExpr {
+                    from_clause: Either::Left(from_clause),
+                    where_clause: Either::Left(where_clause),
+                    group_by: Either::Left(group_by),
+                    having: Either::Left(having),
+                }
             }
-            Either::Right(rhs) => Either::Right(
-                rhs.transform_from(|from_clause| transform(Either::Right(from_clause))),
-            ),
-        }
-    }
-
-    fn transform_where<NewWhereClause: WhereClause>(
-        self,
-        transform: impl FnOnce(Self::WhereClause) -> NewWhereClause,
-    ) -> impl G::TableExpression {
-        match self {
-            Either::Left(lhs) => Either::Left(
-                lhs.transform_where(|where_clause| transform(Either::Left(where_clause))),
-            ),
-            Either::Right(rhs) => Either::Right(
-                rhs.transform_where(|where_clause| transform(Either::Right(where_clause))),
-            ),
+            Either::Right(right) => {
+                let TableExpr {
+                    from_clause,
+                    where_clause,
+                    group_by,
+                    having,
+                } = right.unwrap();
+                TableExpr {
+                    from_clause: Either::Right(from_clause),
+                    where_clause: Either::Right(where_clause),
+                    group_by: Either::Right(group_by),
+                    having: Either::Right(having),
+                }
+            }
         }
     }
 }

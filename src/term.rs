@@ -1,8 +1,8 @@
 use sql_builder_macros::Term;
 
-use crate::ToQuery;
-
 use crate::grammar as G;
+use crate::Database;
+use crate::ToQuery;
 
 enum TermOperandKind {
     Mult,
@@ -18,13 +18,9 @@ impl AsRef<str> for TermOperandKind {
     }
 }
 
-impl ToQuery for TermOperandKind {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "{}", self.as_ref())
+impl std::fmt::Display for TermOperandKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_ref())
     }
 }
 
@@ -39,20 +35,28 @@ where
     rhs: Rhs,
 }
 
-impl<Lhs, Rhs> ToQuery for TermOperand<Lhs, Rhs>
+impl<Lhs, Rhs> ::std::fmt::Display for TermOperand<Lhs, Rhs>
 where
-    Lhs: G::Term,
-    Rhs: G::Factor,
+    Lhs: G::Term + std::fmt::Display,
+    Rhs: G::Factor + std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} {}", self.lhs, self.kind, self.rhs)
+    }
+}
+impl<DB, Lhs, Rhs> ToQuery<DB> for TermOperand<Lhs, Rhs>
+where
+    DB: Database,
+    Lhs: G::Term + ToQuery<DB>,
+    Rhs: G::Factor + ToQuery<DB>,
 {
     fn write<W: std::io::Write>(
         &self,
         stream: &mut W,
-        ctx: &mut crate::ToQueryContext,
+        ctx: &mut crate::ToQueryContext<DB>,
     ) -> Result<(), std::io::Error> {
         self.lhs.write(stream, ctx)?;
-        write!(stream, " ")?;
-        self.kind.write(stream, ctx)?;
-        write!(stream, " ")?;
+        write!(stream, " {} ", self.kind)?;
         self.rhs.write(stream, ctx)
     }
 }
