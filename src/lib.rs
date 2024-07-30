@@ -25,46 +25,46 @@
 //!
 //! # How to build an INSERT query
 //!
-mod error;
+pub mod error;
 
-mod group_by;
-mod select;
-mod select_sublist;
-mod table_expression;
-mod table_reference_list;
+pub mod group_by;
+pub mod select;
+pub mod select_sublist;
+pub mod table_expression;
+pub mod table_reference_list;
 
-mod bind;
-mod identifier;
-mod numeric_value_expression;
-mod term;
-mod where_clause;
+pub mod bind;
+pub mod identifier;
+pub mod numeric_value_expression;
+pub mod term;
+pub mod where_clause;
 
-mod derived_column;
-mod from_clause;
+pub mod derived_column;
+pub mod from_clause;
 
-mod asterisk;
-mod blank;
-mod boolean_factor;
-mod boolean_primary;
-mod boolean_term;
-mod boolean_test;
-mod character_string_literal;
-mod column_name_list;
-mod comparison_predicate;
-mod contextually_typed_row_value_constructor;
-mod contextually_typed_row_value_constructor_element_list;
-mod contextually_typed_row_value_expression_list;
-mod either;
-mod from_constructor;
-mod having_clause;
-mod identifier_chain;
-mod insert;
-mod schema_name;
-mod search_condition;
-mod signed_numeric_literal;
-mod truth_value;
-mod unqualified_schema_name;
-mod unsigned_numeric_literal;
+pub mod asterisk;
+pub mod blank;
+pub mod boolean_factor;
+pub mod boolean_primary;
+pub mod boolean_term;
+pub mod boolean_test;
+pub mod character_string_literal;
+pub mod column_name_list;
+pub mod comparison_predicate;
+pub mod contextually_typed_row_value_constructor;
+pub mod contextually_typed_row_value_constructor_element_list;
+pub mod contextually_typed_row_value_expression_list;
+pub mod either;
+pub mod from_constructor;
+pub mod having_clause;
+pub mod identifier_chain;
+pub mod insert;
+pub mod schema_name;
+pub mod search_condition;
+pub mod signed_numeric_literal;
+pub mod truth_value;
+pub mod unqualified_schema_name;
+pub mod unsigned_numeric_literal;
 
 use sqlx::Arguments as _;
 pub use sqlx::Database;
