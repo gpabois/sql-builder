@@ -143,7 +143,7 @@ pub use numeric_value_expression::{add, sub};
 pub use search_condition::or;
 pub use select::select;
 pub use signed_numeric_literal::signed_numeric_lit;
-pub use sql_builder_macros::{bind, id, lit, select_columns};
+pub use sql_builder_macros::{bind, columns, id, lit, row_value, select_columns};
 pub use term::{div, mult};
 pub use truth_value::{False, True, Unknown};
 pub use unsigned_numeric_literal::unsigned_numeric_lit;

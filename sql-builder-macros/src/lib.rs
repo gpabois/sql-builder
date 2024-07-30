@@ -1,10 +1,14 @@
+mod column_name_list;
+mod row_value;
 mod select_sublist;
 
+use column_name_list::ColumnNameList;
 use itertools::Itertools;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
 use quote::{quote, ToTokens as _};
 use regex::Regex;
+use row_value::RowValue;
 use select_sublist::SelectSublist;
 use sql_builder_def::{detect_loop, fetch_deps, SymbolDef, SYMBOL_MAP};
 use sql_builder_meta_macros::create_symbol_derivations;
@@ -76,9 +80,22 @@ pub fn lit(input: TokenStream) -> TokenStream {
     }
     .into()
 }
+#[proc_macro]
+/// Construct a row value based on a list of element.
+pub fn row_value(input: TokenStream) -> TokenStream {
+    let value: RowValue = parse_macro_input!(input);
+    value.to_token_stream().into()
+}
 
 #[proc_macro]
-/// Build a list of selected columns.
+/// Generates a list of column names.
+pub fn columns(input: TokenStream) -> TokenStream {
+    let columns: ColumnNameList = parse_macro_input!(input);
+    columns.to_token_stream().into()
+}
+
+#[proc_macro]
+/// Generates a select list.
 pub fn select_columns(input: TokenStream) -> TokenStream {
     let sublist: SelectSublist = parse_macro_input!(input);
     sublist.to_token_stream().into()
