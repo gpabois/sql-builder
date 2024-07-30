@@ -1003,6 +1003,7 @@ dependencies = [
 name = "sql-builder"
 version = "0.1.0"
 dependencies = [
+ "futures-core",
  "itertools",
  "regex",
  "sql-builder-macros",

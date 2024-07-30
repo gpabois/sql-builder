@@ -9,3 +9,4 @@ regex = "1.10.5"
 sqlx = "0.8.0"
 sql-builder-macros = { path = "./sql-builder-macros" }
 itertools = "0.13.0"
+futures-core = "0.3.30"

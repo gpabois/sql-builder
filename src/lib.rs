@@ -66,8 +66,8 @@ mod truth_value;
 mod unqualified_schema_name;
 mod unsigned_numeric_literal;
 
-use sqlx::Arguments;
 pub use sqlx::Database;
+use sqlx::{Arguments, Execute};
 use std::marker::PhantomData;
 
 pub struct ToQueryContext<'q, DB>
@@ -109,9 +109,11 @@ where
     where
         T: ::sqlx::Encode<'q, DB> + ::sqlx::Type<DB>,
     {
-        self.args.add(value);
-        self.args.format_placeholder(&mut self.sql);
-        Ok(())
+        self.args
+            .add(value)
+            .unwrap_or_else(|_| panic!("cannot encode value into query"));
+
+        self.args.format_placeholder(&mut self.sql)
     }
 }
 
@@ -119,6 +121,12 @@ pub trait ToQuery<'q, DB>: std::fmt::Display
 where
     DB: Database,
 {
+    fn to_query(&'q self) -> Result<(String, DB::Arguments<'q>), std::fmt::Error> {
+        let mut ctx = ToQueryContext::<DB>::default();
+        self.write(&mut ctx)?;
+        Ok((ctx.sql, ctx.args))
+    }
+
     fn write(&'q self, ctx: &mut ToQueryContext<'q, DB>) -> std::fmt::Result;
 }
 
