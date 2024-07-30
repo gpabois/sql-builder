@@ -1,7 +1,7 @@
-use sql_builder_macros::TruthValue;
-
 use crate::Database;
 use crate::ToQuery;
+use sql_builder_macros::TruthValue;
+use std::fmt::Write;
 
 #[derive(TruthValue)]
 pub struct True;
@@ -17,16 +17,12 @@ impl std::fmt::Display for True {
     }
 }
 
-impl<DB> ToQuery<DB> for True
+impl<'q, DB> ToQuery<'q, DB> for True
 where
     DB: Database,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "{}", self)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "{}", self)
     }
 }
 
@@ -45,16 +41,12 @@ impl std::fmt::Display for False {
     }
 }
 
-impl<DB> ToQuery<DB> for False
+impl<'q, DB> ToQuery<'q, DB> for False
 where
     DB: Database,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "{}", self)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "{}", self)
     }
 }
 
@@ -73,15 +65,11 @@ impl std::fmt::Display for Unknown {
     }
 }
 
-impl<DB> ToQuery<DB> for Unknown
+impl<'q, DB> ToQuery<'q, DB> for Unknown
 where
     DB: Database,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "{}", self)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "{}", self)
     }
 }

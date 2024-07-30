@@ -1,5 +1,3 @@
-use sql_builder_macros::Insert;
-
 use crate::{
     blank::Blank,
     either::Either,
@@ -7,6 +5,8 @@ use crate::{
     grammar::{self, InsertColumnsAndSources, InsertionTarget, OverrideClause},
     ToQuery,
 };
+use sql_builder_macros::Insert;
+use std::fmt::Write;
 
 use crate::grammar as G;
 use crate::helpers as H;
@@ -62,21 +62,17 @@ where
     }
 }
 
-impl<DB, Target, Values> ToQuery<DB> for Insert<Target, Values>
+impl<'q, DB, Target, Values> ToQuery<'q, DB> for Insert<Target, Values>
 where
     DB: Database,
-    Target: InsertionTarget + ToQuery<DB>,
-    Values: InsertColumnsAndSources + ToQuery<DB>,
+    Target: InsertionTarget + ToQuery<'q, DB>,
+    Values: InsertColumnsAndSources + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "INSERT INTO ")?;
-        self.target.write(stream, ctx)?;
-        write!(stream, " ")?;
-        self.values.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "INSERT INTO ")?;
+        self.target.write(ctx)?;
+        write!(ctx, " ")?;
+        self.values.write(ctx)
     }
 }
 

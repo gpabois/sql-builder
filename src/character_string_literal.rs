@@ -1,6 +1,6 @@
-use sql_builder_macros::CharacterStringLiteral;
-
 use crate::{Database, ToQuery};
+use sql_builder_macros::CharacterStringLiteral;
+use std::fmt::Write;
 
 #[derive(CharacterStringLiteral)]
 pub struct CharacterStringLiteralRef<'a>(&'a str);
@@ -25,30 +25,26 @@ impl ::std::fmt::Display for CharacterStringLiteralRef<'_> {
     }
 }
 
-impl<DB> ToQuery<DB> for CharacterStringLiteralRef<'_>
+impl<'q, DB> ToQuery<'q, DB> for CharacterStringLiteralRef<'_>
 where
     DB: Database,
 {
     /// Write the string literal
     /// Autoescape quote
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
         let mut prev = '\0';
 
-        write!(stream, "'")?;
+        write!(ctx, "'")?;
         for c in self.0.chars() {
             if c == '\'' && prev != '\'' && prev != '\0' {
-                write!(stream, "''")?;
+                write!(ctx, "''")?;
             } else {
-                write!(stream, "{}", c)?;
+                write!(ctx, "{}", c)?;
             }
 
             prev = c;
         }
-        write!(stream, "'")?;
+        write!(ctx, "'")?;
 
         Ok(())
     }
@@ -57,4 +53,3 @@ where
 pub fn char_str_lit(value: &str) -> CharacterStringLiteralRef<'_> {
     CharacterStringLiteralRef(value)
 }
-

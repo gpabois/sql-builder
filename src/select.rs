@@ -1,7 +1,7 @@
-use sql_builder_macros::QuerySpecification;
-
 use crate::either::Either;
 use crate::{from_clause::From, ToQuery};
+use sql_builder_macros::QuerySpecification;
+use std::fmt::Write;
 
 use crate::grammar as G;
 use crate::helpers as H;
@@ -120,27 +120,23 @@ where
         write!(f, "{} {}", self.select_list, self.table_expression)
     }
 }
-impl<DB, Selection, Table> ToQuery<DB> for Select<Selection, Table>
+impl<'q, DB, Selection, Table> ToQuery<'q, DB> for Select<Selection, Table>
 where
     DB: Database,
-    Selection: G::SelectList + ToQuery<DB>,
-    Table: G::TableExpression + ToQuery<DB>,
+    Selection: G::SelectList + ToQuery<'q, DB>,
+    Table: G::TableExpression + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "SELECT ")?;
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "SELECT ")?;
 
         match &self.quantifier {
-            Some(q) => write!(stream, "{}", q)?,
+            Some(q) => write!(ctx, "{}", q)?,
             None => {}
         };
 
-        self.select_list.write(stream, ctx)?;
-        write!(stream, " ")?;
-        self.table_expression.write(stream, ctx)
+        self.select_list.write(ctx)?;
+        write!(ctx, " ")?;
+        self.table_expression.write(ctx)
     }
 }
 

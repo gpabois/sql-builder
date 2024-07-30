@@ -1,6 +1,6 @@
-use sql_builder_macros::ComparisonPredicate;
-
 use crate::{grammar as G, Database, ToQuery};
+use sql_builder_macros::ComparisonPredicate;
+use std::fmt::Write;
 
 enum ComparisonKind {
     Equals,
@@ -24,16 +24,12 @@ impl AsRef<str> for ComparisonKind {
     }
 }
 
-impl<DB> ToQuery<DB> for ComparisonKind
+impl<'q, DB> ToQuery<'q, DB> for ComparisonKind
 where
     DB: Database,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "{}", self.as_ref())
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "{}", self.as_ref())
     }
 }
 
@@ -64,22 +60,18 @@ where
     }
 }
 
-impl<DB, Lhs, Rhs> ToQuery<DB> for Compare<Lhs, Rhs>
+impl<'q, DB, Lhs, Rhs> ToQuery<'q, DB> for Compare<Lhs, Rhs>
 where
     DB: Database,
-    Lhs: G::RowValuePredicand + ToQuery<DB>,
-    Rhs: G::RowValuePredicand + ToQuery<DB>,
+    Lhs: G::RowValuePredicand + ToQuery<'q, DB>,
+    Rhs: G::RowValuePredicand + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.lhs.write(stream, ctx)?;
-        write!(stream, " ")?;
-        self.op.write(stream, ctx)?;
-        write!(stream, " ")?;
-        self.rhs.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.lhs.write(ctx)?;
+        write!(ctx, " ")?;
+        self.op.write(ctx)?;
+        write!(ctx, " ")?;
+        self.rhs.write(ctx)
     }
 }
 

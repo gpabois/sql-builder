@@ -11,15 +11,11 @@ impl ::std::fmt::Display for Having {
     }
 }
 
-impl<DB> ToQuery<DB> for Having
+impl<'q, DB> ToQuery<'q, DB> for Having
 where
     DB: Database,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        _stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
+    fn write(&'q self, _ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
         todo!("implement ToQuery for Having")
     }
 }

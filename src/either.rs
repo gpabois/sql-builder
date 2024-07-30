@@ -60,20 +60,16 @@ where
     }
 }
 
-impl<DB, Lhs, Rhs> ToQuery<DB> for Either<Lhs, Rhs>
+impl<'q, DB, Lhs, Rhs> ToQuery<'q, DB> for Either<Lhs, Rhs>
 where
     DB: Database,
-    Lhs: ToQuery<DB>,
-    Rhs: ToQuery<DB>,
+    Lhs: ToQuery<'q, DB>,
+    Rhs: ToQuery<'q, DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> ::std::fmt::Result {
         match self {
-            Either::Left(left) => left.write(stream, ctx),
-            Either::Right(right) => right.write(stream, ctx),
+            Either::Left(left) => left.write(ctx),
+            Either::Right(right) => right.write(ctx),
         }
     }
 }

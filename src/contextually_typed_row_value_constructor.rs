@@ -1,7 +1,7 @@
 //! A constructor to create a row value.
-
 use crate::{grammar as G, Database, ToQuery};
 use sql_builder_macros::ContextuallyTypedRowValueConstructor;
+use std::fmt::Write;
 
 #[derive(ContextuallyTypedRowValueConstructor)]
 pub struct RowValue<Elements>(Elements)
@@ -26,18 +26,14 @@ where
     }
 }
 
-impl<DB, Elements> ToQuery<DB> for RowValue<Elements>
+impl<'q, DB, Elements> ToQuery<'q, DB> for RowValue<Elements>
 where
     DB: Database,
-    Elements: G::ContextuallyTypedRowValueConstructorElementList + ToQuery<DB>,
+    Elements: G::ContextuallyTypedRowValueConstructorElementList + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "(")?;
-        self.0.write(stream, ctx)?;
-        write!(stream, ")")
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "(")?;
+        self.0.write(ctx)?;
+        write!(ctx, ")")
     }
 }

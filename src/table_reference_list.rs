@@ -1,8 +1,8 @@
-use sql_builder_macros::TableReferenceList;
-
 use crate::grammar as G;
 use crate::Database;
 use crate::ToQuery;
+use sql_builder_macros::TableReferenceList;
+use std::fmt::Write;
 
 #[derive(TableReferenceList)]
 pub struct TableReferenceLink<Head, Tail>
@@ -34,19 +34,15 @@ where
     }
 }
 
-impl<DB, Head, Tail> ToQuery<DB> for TableReferenceLink<Head, Tail>
+impl<'q, DB, Head, Tail> ToQuery<'q, DB> for TableReferenceLink<Head, Tail>
 where
     DB: Database,
-    Head: G::TableReferenceList + ToQuery<DB>,
-    Tail: G::TableReference + ToQuery<DB>,
+    Head: G::TableReferenceList + ToQuery<'q, DB>,
+    Tail: G::TableReference + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.head.write(stream, ctx)?;
-        write!(stream, ", ")?;
-        self.tail.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.head.write(ctx)?;
+        write!(ctx, ", ")?;
+        self.tail.write(ctx)
     }
 }

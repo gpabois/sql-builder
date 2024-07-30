@@ -1,8 +1,8 @@
-use sql_builder_macros::ContextuallyTypedRowValueExpressionList;
-
 use crate::grammar as G;
 use crate::Database;
 use crate::ToQuery;
+use sql_builder_macros::ContextuallyTypedRowValueExpressionList;
+use std::fmt::Write;
 
 #[derive(ContextuallyTypedRowValueExpressionList)]
 pub struct ContextuallyTypedRowExpressionLink<Head, Tail>
@@ -32,19 +32,15 @@ where
         write!(f, "{}, {}", self.head, self.tail)
     }
 }
-impl<DB, Head, Tail> ToQuery<DB> for ContextuallyTypedRowExpressionLink<Head, Tail>
+impl<'q, DB, Head, Tail> ToQuery<'q, DB> for ContextuallyTypedRowExpressionLink<Head, Tail>
 where
     DB: Database,
-    Head: G::ContextuallyTypedRowValueExpressionList + ToQuery<DB>,
-    Tail: G::ContextuallyTypedRowValueExpression + ToQuery<DB>,
+    Head: G::ContextuallyTypedRowValueExpressionList + ToQuery<'q, DB>,
+    Tail: G::ContextuallyTypedRowValueExpression + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.head.write(stream, ctx)?;
-        write!(stream, ", ")?;
-        self.tail.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> ::std::fmt::Result {
+        self.head.write(ctx)?;
+        write!(ctx, ", ")?;
+        self.tail.write(ctx)
     }
 }

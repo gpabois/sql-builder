@@ -1,6 +1,6 @@
-use sql_builder_macros::FromConstructor;
-
 use crate::{grammar as G, Database, ToQuery};
+use sql_builder_macros::FromConstructor;
+use std::fmt::Write;
 
 #[derive(FromConstructor)]
 pub struct FromConstructor<Columns, Override, Value>
@@ -48,29 +48,25 @@ where
     }
 }
 
-impl<DB, Columns, Override, Value> ToQuery<DB> for FromConstructor<Columns, Override, Value>
+impl<'q, DB, Columns, Override, Value> ToQuery<'q, DB> for FromConstructor<Columns, Override, Value>
 where
     DB: Database,
-    Columns: G::InsertColumnList + ToQuery<DB>,
-    Override: G::OverrideClause + ToQuery<DB>,
-    Value: G::ContextuallyTypedTableValueConstructor + ToQuery<DB>,
+    Columns: G::InsertColumnList + ToQuery<'q, DB>,
+    Override: G::OverrideClause + ToQuery<'q, DB>,
+    Value: G::ContextuallyTypedTableValueConstructor + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> ::std::fmt::Result {
         if Columns::IS_IMPL {
-            write!(stream, "(")?;
-            self.columns.write(stream, ctx)?;
-            write!(stream, ") ")?;
+            write!(ctx, "(")?;
+            self.columns.write(ctx)?;
+            write!(ctx, ") ")?;
         }
 
         if Override::IS_IMPL {
-            self.override_clause.write(stream, ctx)?;
-            write!(stream, " ")?;
+            self.override_clause.write(ctx)?;
+            write!(ctx, " ")?;
         }
 
-        self.value.write(stream, ctx)
+        self.value.write(ctx)
     }
 }

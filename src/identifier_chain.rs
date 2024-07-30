@@ -1,8 +1,8 @@
-use sql_builder_macros::IdentifierChain;
-
 use crate::grammar as G;
 use crate::Database;
 use crate::ToQuery;
+use sql_builder_macros::IdentifierChain;
+use std::fmt::Write;
 
 #[derive(IdentifierChain)]
 pub struct IdentifierLink<Head, Tail>(Head, Tail)
@@ -30,19 +30,15 @@ where
     }
 }
 
-impl<DB, Head, Tail> ToQuery<DB> for IdentifierLink<Head, Tail>
+impl<'q, DB, Head, Tail> ToQuery<'q, DB> for IdentifierLink<Head, Tail>
 where
     DB: Database,
-    Head: G::IdentifierChain + ToQuery<DB>,
-    Tail: G::Identifier + ToQuery<DB>,
+    Head: G::IdentifierChain + ToQuery<'q, DB>,
+    Tail: G::Identifier + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.0.write(stream, ctx)?;
-        write!(stream, ".")?;
-        self.1.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.0.write(ctx)?;
+        write!(ctx, ".")?;
+        self.1.write(ctx)
     }
 }

@@ -1,10 +1,9 @@
-use sqlx::{Database, Encode};
+use sql_builder_macros::DynamicParameterSpecification;
 
 use crate::ToQuery;
 
+#[derive(DynamicParameterSpecification)]
 /// A bound parameter
-///
-/// Is <term>
 pub struct Bound<T> {
     param: T,
 }
@@ -21,20 +20,16 @@ impl<T> std::fmt::Display for Bound<T> {
     }
 }
 
-impl<DB, T> ToQuery<DB> for Bound<T>
+impl<'q, DB, T> ToQuery<'q, DB> for Bound<T>
 where
-    DB: Database,
-    for<'r> T: Encode<'r, DB>,
+    DB: ::sqlx::Database,
+    T: ::sqlx::Encode<'q, DB> + ::sqlx::Type<DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        todo!()
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        ctx.write_argument(&self.param)
     }
 }
 
-fn bind<T>(value: T) -> Bound<T> {
+pub fn bind<T>(value: T) -> Bound<T> {
     Bound::new(value)
 }

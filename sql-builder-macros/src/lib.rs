@@ -25,6 +25,12 @@ pub fn id(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+pub fn bind(input: TokenStream) -> TokenStream {
+    let expr: syn::Expr = parse_macro_input!(input);
+    quote! {::sql_builder::bind(#expr)}.into()
+}
+
+#[proc_macro]
 /// Creates an SQL literal.
 pub fn lit(input: TokenStream) -> TokenStream {
     let lit: syn::Lit = parse_macro_input!(input);

@@ -3,6 +3,7 @@ use crate::grammar as G;
 use crate::ToQuery;
 use sql_builder_macros::SearchCondition;
 use sqlx::Database;
+use std::fmt::Write;
 
 #[derive(SearchCondition)]
 pub struct Or<Lhs, Rhs>
@@ -24,20 +25,16 @@ where
     }
 }
 
-impl<DB, SearchCond, BoolTerm> ToQuery<DB> for Or<SearchCond, BoolTerm>
+impl<'q, DB, SearchCond, BoolTerm> ToQuery<'q, DB> for Or<SearchCond, BoolTerm>
 where
     DB: Database,
-    SearchCond: G::SearchCondition + ToQuery<DB>,
-    BoolTerm: G::BooleanTerm + ToQuery<DB>,
+    SearchCond: G::SearchCondition + ToQuery<'q, DB>,
+    BoolTerm: G::BooleanTerm + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.lhs.write(stream, ctx)?;
-        write!(stream, " OR ")?;
-        self.rhs.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.lhs.write(ctx)?;
+        write!(ctx, " OR ")?;
+        self.rhs.write(ctx)
     }
 }
 

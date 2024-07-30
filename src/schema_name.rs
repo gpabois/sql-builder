@@ -1,9 +1,9 @@
-use sql_builder_macros::SchemaName;
-
 use crate::{
     grammar::{Identifier, UnqualifiedSchemaName},
     Database, ToQuery,
 };
+use sql_builder_macros::SchemaName;
+use std::fmt::Write;
 
 #[derive(SchemaName)]
 pub struct SchemaName<CatName, SchemName>
@@ -25,19 +25,15 @@ where
     }
 }
 
-impl<DB, CatName, SchemName> ToQuery<DB> for SchemaName<CatName, SchemName>
+impl<'q, DB, CatName, SchemName> ToQuery<'q, DB> for SchemaName<CatName, SchemName>
 where
     DB: Database,
-    CatName: Identifier + ToQuery<DB>,
-    SchemName: UnqualifiedSchemaName + ToQuery<DB>,
+    CatName: Identifier + ToQuery<'q, DB>,
+    SchemName: UnqualifiedSchemaName + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.catalog_name.write(stream, ctx)?;
-        write!(stream, ".")?;
-        self.unqualified_schema_name.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.catalog_name.write(ctx)?;
+        write!(ctx, ".")?;
+        self.unqualified_schema_name.write(ctx)
     }
 }

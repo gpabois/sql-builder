@@ -1,20 +1,16 @@
-use sql_builder_macros::Asterisk;
-
 use crate::{Database, ToQuery};
+use sql_builder_macros::Asterisk;
+use std::fmt::Write;
 
 #[derive(Asterisk)]
 /// Asterisk (*)
 pub struct Asterisk;
 
-impl<DB> ToQuery<DB> for Asterisk
+impl<'q, DB> ToQuery<'q, DB> for Asterisk
 where
     DB: Database,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
+    fn write(&'q self, stream: &mut crate::ToQueryContext<DB>) -> std::fmt::Result {
         write!(stream, "*")
     }
 }

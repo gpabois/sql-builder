@@ -1,7 +1,7 @@
-use sql_builder_macros::UnsignedNumericLiteral;
-
 use crate::Database;
 use crate::ToQuery;
+use sql_builder_macros::UnsignedNumericLiteral;
+use std::fmt::Write;
 
 #[derive(UnsignedNumericLiteral)]
 pub enum UnsignedNumericLiteral {
@@ -18,16 +18,12 @@ impl std::fmt::Display for UnsignedNumericLiteral {
     }
 }
 
-impl<DB> ToQuery<DB> for UnsignedNumericLiteral
+impl<'q, DB> ToQuery<'q, DB> for UnsignedNumericLiteral
 where
     DB: Database,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "{}", self)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "{}", self)
     }
 }
 
@@ -50,4 +46,3 @@ where
 {
     UnsignedNumericLiteral::from(value)
 }
-

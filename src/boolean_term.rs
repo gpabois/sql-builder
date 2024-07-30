@@ -1,6 +1,6 @@
-use sql_builder_macros::BooleanTerm;
-
 use crate::{grammar as G, Database, ToQuery};
+use sql_builder_macros::BooleanTerm;
+use std::fmt::Write;
 
 #[derive(BooleanTerm)]
 pub struct And<Lhs, Rhs>
@@ -22,20 +22,16 @@ where
     }
 }
 
-impl<DB, Lhs, Rhs> ToQuery<DB> for And<Lhs, Rhs>
+impl<'q, DB, Lhs, Rhs> ToQuery<'q, DB> for And<Lhs, Rhs>
 where
     DB: Database,
-    Lhs: G::BooleanTerm + ToQuery<DB>,
-    Rhs: G::BooleanFactor + ToQuery<DB>,
+    Lhs: G::BooleanTerm + ToQuery<'q, DB>,
+    Rhs: G::BooleanFactor + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.lhs.write(stream, ctx)?;
-        write!(stream, " AND ")?;
-        self.rhs.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> ::std::fmt::Result {
+        self.lhs.write(ctx)?;
+        write!(ctx, " AND ")?;
+        self.rhs.write(ctx)
     }
 }
 

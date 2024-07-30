@@ -66,44 +66,63 @@ mod truth_value;
 mod unqualified_schema_name;
 mod unsigned_numeric_literal;
 
+use sqlx::Arguments;
 pub use sqlx::Database;
-use std::{io::Write, marker::PhantomData};
+use std::marker::PhantomData;
 
-pub struct ToQueryContext<DB>
+pub struct ToQueryContext<'q, DB>
 where
-    DB: Database,
+    DB: ::sqlx::Database,
 {
+    args: <DB as ::sqlx::Database>::Arguments<'q>,
+    sql: String,
     _pht: PhantomData<DB>,
 }
 
-impl<DB> Default for ToQueryContext<DB>
+impl<'q, DB> std::fmt::Write for ToQueryContext<'q, DB>
+where
+    DB: ::sqlx::Database,
+{
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.sql.write_str(s)
+    }
+}
+
+impl<'q, DB> Default for ToQueryContext<'q, DB>
 where
     DB: Database,
 {
     fn default() -> Self {
-        Self { _pht: PhantomData }
+        Self {
+            _pht: PhantomData,
+            args: Default::default(),
+            sql: String::default(),
+        }
     }
 }
 
-pub trait ToQuery<DB>: std::fmt::Display
+impl<'q, DB> ToQueryContext<'q, DB>
 where
     DB: Database,
 {
-    fn to_raw_query(&self) -> Result<String, Box<dyn std::error::Error>> {
-        let mut bytes = Vec::<u8>::default();
-        let mut ctx = ToQueryContext::<DB>::default();
-        self.write(&mut bytes, &mut ctx)?;
-        let sql = String::from_utf8(bytes)?;
-        Ok(sql)
+    pub fn write_argument<T>(&mut self, value: &'q T) -> std::fmt::Result
+    where
+        T: ::sqlx::Encode<'q, DB> + ::sqlx::Type<DB>,
+    {
+        self.args.add(value);
+        self.args.format_placeholder(&mut self.sql);
+        Ok(())
     }
-
-    fn write<W: Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error>;
 }
 
+pub trait ToQuery<'q, DB>: std::fmt::Display
+where
+    DB: Database,
+{
+    fn write(&'q self, ctx: &mut ToQueryContext<'q, DB>) -> std::fmt::Result;
+}
+
+pub use bind::bind;
 pub use boolean_factor::not;
 pub use boolean_term::and;
 pub use boolean_test::{is_not_truth_value, is_truth_value};
@@ -116,6 +135,7 @@ pub use numeric_value_expression::{add, sub};
 pub use search_condition::or;
 pub use select::select;
 pub use signed_numeric_literal::signed_numeric_lit;
+pub use sql_builder_macros::bind;
 pub use sql_builder_macros::{id, lit};
 pub use term::{div, mult};
 pub use truth_value::{False, True, Unknown};
@@ -149,11 +169,22 @@ pub mod helpers {
     use crate::{
         boolean_primary::NestedSearchCondition, boolean_term::And,
         column_name_list::ColumnNameLink, contextually_typed_row_value_constructor::RowValue,
+        contextually_typed_row_value_constructor_element_list::RowElementLink,
         contextually_typed_row_value_expression_list::ContextuallyTypedRowExpressionLink,
         derived_column::AliasedColumn, grammar as G, identifier_chain::IdentifierLink,
         search_condition::Or, select::Select, select_sublist::SelectLink,
         table_expression::TableExpr, table_reference_list::TableReferenceLink, where_clause::Where,
     };
+
+    pub type QuerySpecificationWithTransformedWhere<Qs, SearchCond> = Select<
+        <Qs as QuerySpecification>::SelectList,
+        TableExpr<
+            <<Qs as QuerySpecification>::TableExpression as TableExpression>::FromClause,
+            Where<SearchCond>,
+            <<Qs as QuerySpecification>::TableExpression as TableExpression>::GroupByClause,
+            <<Qs as QuerySpecification>::TableExpression as TableExpression>::HavingClause,
+        >,
+    >;
 
     pub trait QuerySpecification: Sized {
         type SelectList: G::SelectList;
@@ -179,7 +210,7 @@ pub mod helpers {
         /// All rows are selected
         fn all(self) -> Select<Self::SelectList, Self::TableExpression> {
             let Select {
-                quantifier,
+                quantifier: _,
                 select_list,
                 table_expression,
             } = self.unwrap();
@@ -194,15 +225,7 @@ pub mod helpers {
         fn r#where<SearchCond>(
             self,
             cond: SearchCond,
-        ) -> Select<
-            <Self as QuerySpecification>::SelectList,
-            TableExpr<
-                <Self::TableExpression as TableExpression>::FromClause,
-                Where<SearchCond>,
-                <Self::TableExpression as TableExpression>::GroupByClause,
-                <Self::TableExpression as TableExpression>::HavingClause,
-            >,
-        >
+        ) -> QuerySpecificationWithTransformedWhere<Self, SearchCond>
         where
             Self: G::QuerySpecification,
             SearchCond: G::SearchCondition,
@@ -407,7 +430,7 @@ pub mod helpers {
     }
 
     pub trait ContextuallyTypedRowValueExpressionList: Sized {
-        /// add a new row value in the list
+        /// Add a new row value in the list
         fn add_row_value<Value>(
             self,
             value: Value,
@@ -427,6 +450,15 @@ pub mod helpers {
             Self: G::ContextuallyTypedRowValueConstructorElementList,
         {
             RowValue::new(self)
+        }
+
+        /// Add a new row element in the list.
+        fn add_row_element<Element>(self, element: Element) -> RowElementLink<Self, Element>
+        where
+            Self: G::ContextuallyTypedRowValueConstructorElementList,
+            Element: G::ContextuallyTypedRowValueConstructorElement,
+        {
+            RowElementLink::new(self, element)
         }
     }
 }

@@ -1,6 +1,6 @@
-use sql_builder_macros::TableExpression;
-
 use crate::{blank::Blank, either::Either, Database, ToQuery};
+use sql_builder_macros::TableExpression;
+use std::fmt::Write;
 
 use crate::grammar as G;
 use crate::helpers as H;
@@ -65,34 +65,31 @@ where
     }
 }
 
-impl<DB, From, Where, GroupBy, Having> ToQuery<DB> for TableExpr<From, Where, GroupBy, Having>
+impl<'q, DB, From, Where, GroupBy, Having> ToQuery<'q, DB>
+    for TableExpr<From, Where, GroupBy, Having>
 where
     DB: Database,
-    From: G::FromClause + ToQuery<DB>,
-    Where: G::WhereClause + ToQuery<DB>,
-    GroupBy: G::GroupByClause + ToQuery<DB>,
-    Having: G::HavingClause + ToQuery<DB>,
+    From: G::FromClause + ToQuery<'q, DB>,
+    Where: G::WhereClause + ToQuery<'q, DB>,
+    GroupBy: G::GroupByClause + ToQuery<'q, DB>,
+    Having: G::HavingClause + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.from_clause.write(stream, ctx)?;
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.from_clause.write(ctx)?;
 
         if Where::IS_IMPL {
-            write!(stream, " ")?;
-            self.where_clause.write(stream, ctx)?;
+            write!(ctx, " ")?;
+            self.where_clause.write(ctx)?;
         }
 
         if GroupBy::IS_IMPL {
-            write!(stream, " ")?;
-            self.group_by.write(stream, ctx)?;
+            write!(ctx, " ")?;
+            self.group_by.write(ctx)?;
         }
 
         if Having::IS_IMPL {
-            write!(stream, " ")?;
-            self.having.write(stream, ctx)?;
+            write!(ctx, " ")?;
+            self.having.write(ctx)?;
         }
 
         Ok(())

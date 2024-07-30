@@ -1,15 +1,26 @@
 use sql_builder_macros::ContextuallyTypedRowValueConstructorElementList;
 
 use crate::{grammar as G, Database, ToQuery};
+use std::fmt::Write;
 
 #[derive(ContextuallyTypedRowValueConstructorElementList)]
 /// A linked-list of row values's constructor elements.
-pub struct ContextuallyTypedRowValueConstructorElementLink<Head, Tail>(Head, Tail)
+pub struct RowElementLink<Head, Tail>(Head, Tail)
 where
     Head: G::ContextuallyTypedRowValueConstructorElementList,
     Tail: G::ContextuallyTypedRowValueConstructorElement;
 
-impl<Head, Tail> ::std::fmt::Display for ContextuallyTypedRowValueConstructorElementLink<Head, Tail>
+impl<Head, Tail> RowElementLink<Head, Tail>
+where
+    Head: G::ContextuallyTypedRowValueConstructorElementList,
+    Tail: G::ContextuallyTypedRowValueConstructorElement,
+{
+    pub fn new(head: Head, tail: Tail) -> Self {
+        Self(head, tail)
+    }
+}
+
+impl<Head, Tail> ::std::fmt::Display for RowElementLink<Head, Tail>
 where
     Head: G::ContextuallyTypedRowValueConstructorElementList + std::fmt::Display,
     Tail: G::ContextuallyTypedRowValueConstructorElement + std::fmt::Display,
@@ -19,19 +30,15 @@ where
     }
 }
 
-impl<DB, Head, Tail> ToQuery<DB> for ContextuallyTypedRowValueConstructorElementLink<Head, Tail>
+impl<'q, DB, Head, Tail> ToQuery<'q, DB> for RowElementLink<Head, Tail>
 where
     DB: Database,
-    Head: G::ContextuallyTypedRowValueConstructorElementList + ToQuery<DB>,
-    Tail: G::ContextuallyTypedRowValueConstructorElement + ToQuery<DB>,
+    Head: G::ContextuallyTypedRowValueConstructorElementList + ToQuery<'q, DB>,
+    Tail: G::ContextuallyTypedRowValueConstructorElement + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.0.write(stream, ctx)?;
-        write!(stream, ", ")?;
-        self.1.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> ::std::fmt::Result {
+        self.0.write(ctx)?;
+        write!(ctx, ", ")?;
+        self.1.write(ctx)
     }
 }

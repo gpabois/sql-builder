@@ -1,8 +1,8 @@
-use sql_builder_macros::SelectSublist;
-
 use crate::grammar as G;
 use crate::Database;
 use crate::ToQuery;
+use sql_builder_macros::SelectSublist;
+use std::fmt::Write;
 
 /// A list of select expressions.
 /// Work recursively.
@@ -32,20 +32,15 @@ where
     }
 }
 
-impl<DB, Head, Tail> ToQuery<DB> for SelectLink<Head, Tail>
+impl<'q, DB, Head, Tail> ToQuery<'q, DB> for SelectLink<Head, Tail>
 where
     DB: Database,
-    Head: G::SelectSublist + ToQuery<DB>,
-    Tail: G::SelectSublistElement + ToQuery<DB>,
+    Head: G::SelectSublist + ToQuery<'q, DB>,
+    Tail: G::SelectSublistElement + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.0.write(stream, ctx)?;
-        write!(stream, ", ")?;
-        self.1.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.0.write(ctx)?;
+        write!(ctx, ", ")?;
+        self.1.write(ctx)
     }
 }
-

@@ -1,8 +1,8 @@
-use sql_builder_macros::BooleanPrimary;
-
 use crate::grammar as G;
 use crate::Database;
 use crate::ToQuery;
+use sql_builder_macros::BooleanPrimary;
+use std::fmt::Write;
 
 #[derive(BooleanPrimary)]
 pub struct NestedSearchCondition<Cond>(pub(crate) Cond)
@@ -27,18 +27,14 @@ where
     }
 }
 
-impl<DB, SearchCond> ToQuery<DB> for NestedSearchCondition<SearchCond>
+impl<'q, DB, SearchCond> ToQuery<'q, DB> for NestedSearchCondition<SearchCond>
 where
     DB: Database,
-    SearchCond: G::SearchCondition + ToQuery<DB>,
+    SearchCond: G::SearchCondition + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "(")?;
-        self.0.write(stream, ctx)?;
-        write!(stream, ")")
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> ::std::fmt::Result {
+        write!(ctx, "(")?;
+        self.0.write(ctx)?;
+        write!(ctx, ")")
     }
 }

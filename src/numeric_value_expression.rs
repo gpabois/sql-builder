@@ -1,10 +1,10 @@
-use sql_builder_macros::NumericValueExpression;
-
 use crate::grammar as G;
 use crate::{
     grammar::{NumericValueExpression, Term},
     Database, ToQuery,
 };
+use sql_builder_macros::NumericValueExpression;
+use std::fmt::Write;
 
 enum ArithmOpKind {
     Add,
@@ -47,20 +47,16 @@ where
     }
 }
 
-impl<DB, Lhs, Rhs> ToQuery<DB> for ArithmOperand<Lhs, Rhs>
+impl<'q, DB, Lhs, Rhs> ToQuery<'q, DB> for ArithmOperand<Lhs, Rhs>
 where
     DB: Database,
-    Lhs: G::NumericValueExpression + ToQuery<DB>,
-    Rhs: G::Term + ToQuery<DB>,
+    Lhs: G::NumericValueExpression + ToQuery<'q, DB>,
+    Rhs: G::Term + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.lhs.write(stream, ctx)?;
-        write!(stream, " {} ", self.kind)?;
-        self.rhs.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.lhs.write(ctx)?;
+        write!(ctx, " {} ", self.kind)?;
+        self.rhs.write(ctx)
     }
 }
 

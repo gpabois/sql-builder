@@ -1,25 +1,21 @@
-use sql_builder_macros::BooleanFactor;
-
 use crate::grammar as G;
 use crate::{Database, ToQuery};
+use sql_builder_macros::BooleanFactor;
+use std::fmt::Write;
 
 #[derive(BooleanFactor)]
 pub struct Not<BoolTest>(BoolTest)
 where
     BoolTest: G::BooleanTest;
 
-impl<DB, BoolTest> ToQuery<DB> for Not<BoolTest>
+impl<'q, DB, BoolTest> ToQuery<'q, DB> for Not<BoolTest>
 where
     DB: Database,
-    BoolTest: G::BooleanTest + ToQuery<DB>,
+    BoolTest: G::BooleanTest + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "NOT ")?;
-        self.0.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> ::std::fmt::Result {
+        write!(ctx, "NOT ")?;
+        self.0.write(ctx)
     }
 }
 

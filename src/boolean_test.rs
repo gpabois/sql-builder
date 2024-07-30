@@ -1,6 +1,6 @@
-use sql_builder_macros::BooleanTest;
-
 use crate::{grammar as G, Database, ToQuery};
+use sql_builder_macros::BooleanTest;
+use std::fmt::Write;
 
 #[derive(BooleanTest)]
 pub struct IsTruthValue<Primary, Truth>
@@ -22,20 +22,16 @@ where
     }
 }
 
-impl<DB, Primary, Truth> ToQuery<DB> for IsTruthValue<Primary, Truth>
+impl<'q, DB, Primary, Truth> ToQuery<'q, DB> for IsTruthValue<Primary, Truth>
 where
     DB: Database,
-    Primary: G::BooleanPrimary + ToQuery<DB>,
-    Truth: G::TruthValue + ToQuery<DB>,
+    Primary: G::BooleanPrimary + ToQuery<'q, DB>,
+    Truth: G::TruthValue + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.lhs.write(stream, ctx)?;
-        write!(stream, " IS ")?;
-        self.rhs.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> ::std::fmt::Result {
+        self.lhs.write(ctx)?;
+        write!(ctx, " IS ")?;
+        self.rhs.write(ctx)
     }
 }
 
@@ -49,20 +45,16 @@ where
     rhs: Truth,
 }
 
-impl<DB, Primary, Truth> ToQuery<DB> for IsNotTruthValue<Primary, Truth>
+impl<'q, DB, Primary, Truth> ToQuery<'q, DB> for IsNotTruthValue<Primary, Truth>
 where
     DB: Database,
-    Primary: G::BooleanPrimary + ToQuery<DB>,
-    Truth: G::TruthValue + ToQuery<DB>,
+    Primary: G::BooleanPrimary + ToQuery<'q, DB>,
+    Truth: G::TruthValue + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.lhs.write(stream, ctx)?;
-        write!(stream, " IS NOT ")?;
-        self.rhs.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> ::std::fmt::Result {
+        self.lhs.write(ctx)?;
+        write!(ctx, " IS NOT ")?;
+        self.rhs.write(ctx)
     }
 }
 

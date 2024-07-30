@@ -1,6 +1,6 @@
-use sql_builder_macros::GroupByClause;
-
 use crate::{Database, ToQuery};
+use sql_builder_macros::GroupByClause;
+use std::fmt::Write;
 
 #[derive(GroupByClause)]
 pub struct GroupBy();
@@ -11,16 +11,12 @@ impl ::std::fmt::Display for GroupBy {
     }
 }
 
-impl<DB> ToQuery<DB> for GroupBy
+impl<'q, DB> ToQuery<'q, DB> for GroupBy
 where
     DB: Database,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "GROUP BY ")?;
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "GROUP BY ")?;
         todo!("implement ToQuery for GroupBy")
     }
 }

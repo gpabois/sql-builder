@@ -1,8 +1,8 @@
-use sql_builder_macros::Term;
-
 use crate::grammar as G;
 use crate::Database;
 use crate::ToQuery;
+use sql_builder_macros::Term;
+use std::fmt::Write;
 
 enum TermOperandKind {
     Mult,
@@ -44,20 +44,16 @@ where
         write!(f, "{} {} {}", self.lhs, self.kind, self.rhs)
     }
 }
-impl<DB, Lhs, Rhs> ToQuery<DB> for TermOperand<Lhs, Rhs>
+impl<'q, DB, Lhs, Rhs> ToQuery<'q, DB> for TermOperand<Lhs, Rhs>
 where
     DB: Database,
-    Lhs: G::Term + ToQuery<DB>,
-    Rhs: G::Factor + ToQuery<DB>,
+    Lhs: G::Term + ToQuery<'q, DB>,
+    Rhs: G::Factor + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.lhs.write(stream, ctx)?;
-        write!(stream, " {} ", self.kind)?;
-        self.rhs.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.lhs.write(ctx)?;
+        write!(ctx, " {} ", self.kind)?;
+        self.rhs.write(ctx)
     }
 }
 

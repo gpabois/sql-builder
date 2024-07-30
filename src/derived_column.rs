@@ -1,8 +1,8 @@
-use crate::ToQuery;
-use sql_builder_macros::DerivedColumn;
-
 use crate::grammar as G;
 use crate::Database;
+use crate::ToQuery;
+use sql_builder_macros::DerivedColumn;
+use std::fmt::Write;
 
 #[derive(DerivedColumn)]
 pub struct AliasedColumn<Value, Name>
@@ -37,19 +37,15 @@ where
     }
 }
 
-impl<DB, Value, Name> ToQuery<DB> for AliasedColumn<Value, Name>
+impl<'q, DB, Value, Name> ToQuery<'q, DB> for AliasedColumn<Value, Name>
 where
     DB: Database,
-    Value: G::ValueExpression + ToQuery<DB>,
-    Name: G::ColumnName + ToQuery<DB>,
+    Value: G::ValueExpression + ToQuery<'q, DB>,
+    Name: G::ColumnName + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.value_expression.write(stream, ctx)?;
-        write!(stream, " AS ")?;
-        self.alias.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.value_expression.write(ctx)?;
+        write!(ctx, " AS ")?;
+        self.alias.write(ctx)
     }
 }

@@ -1,6 +1,5 @@
 use crate::{Database, Symbol, ToQuery, ToQueryContext};
 use sql_builder_macros::Blank;
-use std::io::Write;
 
 #[derive(Blank)]
 /// Blank type for default symbol trait implementation.
@@ -8,15 +7,11 @@ pub struct Blank;
 
 impl Symbol for Blank {}
 
-impl<DB> ToQuery<DB> for Blank
+impl<'q, DB> ToQuery<'q, DB> for Blank
 where
     DB: Database,
 {
-    fn write<W: Write>(
-        &self,
-        _stream: &mut W,
-        _ctx: &mut ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
+    fn write(&'q self, _ctx: &mut ToQueryContext<DB>) -> ::std::fmt::Result {
         Ok(())
     }
 }

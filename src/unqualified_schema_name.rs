@@ -13,16 +13,12 @@ where
     }
 }
 
-impl<DB, Id: QualifiedIdentifier> ToQuery<DB> for UnqualifiedSchemaName<Id>
+impl<'q, DB, Id: QualifiedIdentifier> ToQuery<'q, DB> for UnqualifiedSchemaName<Id>
 where
     DB: Database,
-    Id: QualifiedIdentifier + ToQuery<DB>,
+    Id: QualifiedIdentifier + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        self.0.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        self.0.write(ctx)
     }
 }

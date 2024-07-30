@@ -1,9 +1,9 @@
-use sql_builder_macros::FromClause;
-
 use crate::grammar as G;
 use crate::helpers as H;
 use crate::Database;
 use crate::{blank::Blank, either::Either, table_expression::TableExpr, ToQuery};
+use sql_builder_macros::FromClause;
+use std::fmt::Write;
 
 #[derive(FromClause)]
 pub struct From<Refs>
@@ -64,18 +64,14 @@ where
     }
 }
 
-impl<DB, TabRefs> ToQuery<DB> for From<TabRefs>
+impl<'q, DB, TabRefs> ToQuery<'q, DB> for From<TabRefs>
 where
     DB: Database,
-    TabRefs: G::TableReferenceList + ToQuery<DB>,
+    TabRefs: G::TableReferenceList + ToQuery<'q, DB>,
 {
-    fn write<W: std::io::prelude::Write>(
-        &self,
-        stream: &mut W,
-        ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "FROM ")?;
-        self.table_refs.write(stream, ctx)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "FROM ")?;
+        self.table_refs.write(ctx)
     }
 }
 

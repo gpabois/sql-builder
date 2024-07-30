@@ -1,8 +1,11 @@
-use sql_builder::{id, insert, lit, prelude::*};
+use sql_builder::{bind, id, insert, lit, prelude::*};
 
 #[test]
 pub fn test_insert_simple() {
+    let bound = bind(10);
     let values = lit!(10)
+        .add_row_element(lit!(20))
+        .add_row_element(bound)
         .into_row_value()
         .add_row_value(lit!(20).into_row_value());
 

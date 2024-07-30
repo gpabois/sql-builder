@@ -1,7 +1,7 @@
-use sql_builder_macros::SignedNumericLiteral;
-
 use crate::Database;
 use crate::ToQuery;
+use sql_builder_macros::SignedNumericLiteral;
+use std::fmt::Write;
 
 #[derive(SignedNumericLiteral)]
 pub enum SignedNumericLiteral {
@@ -18,16 +18,12 @@ impl ::std::fmt::Display for SignedNumericLiteral {
     }
 }
 
-impl<DB> ToQuery<DB> for SignedNumericLiteral
+impl<'q, DB> ToQuery<'q, DB> for SignedNumericLiteral
 where
     DB: Database,
 {
-    fn write<W: std::io::Write>(
-        &self,
-        stream: &mut W,
-        _ctx: &mut crate::ToQueryContext<DB>,
-    ) -> Result<(), std::io::Error> {
-        write!(stream, "{}", self)
+    fn write(&'q self, ctx: &mut crate::ToQueryContext<'q, DB>) -> std::fmt::Result {
+        write!(ctx, "{}", self)
     }
 }
 
@@ -50,4 +46,3 @@ where
 {
     SignedNumericLiteral::from(value)
 }
-
