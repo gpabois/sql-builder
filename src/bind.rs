@@ -2,7 +2,7 @@ use sql_builder_macros::DynamicParameterSpecification;
 
 use crate::ToQuery;
 
-#[derive(DynamicParameterSpecification)]
+#[derive(Clone, Copy, DynamicParameterSpecification)]
 /// A bound parameter
 pub struct Bound<T> {
     param: T,

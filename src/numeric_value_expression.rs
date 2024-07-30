@@ -6,6 +6,7 @@ use crate::{
 use sql_builder_macros::NumericValueExpression;
 use std::fmt::Write;
 
+#[derive(Clone, Copy)]
 enum ArithmOpKind {
     Add,
     Sub,

@@ -2,7 +2,7 @@ use crate::{Database, ToQuery};
 use sql_builder_macros::GroupByClause;
 use std::fmt::Write;
 
-#[derive(GroupByClause)]
+#[derive(Clone, Copy, GroupByClause)]
 pub struct GroupBy();
 
 impl ::std::fmt::Display for GroupBy {

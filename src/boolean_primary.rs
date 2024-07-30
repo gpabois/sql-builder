@@ -4,7 +4,7 @@ use crate::ToQuery;
 use sql_builder_macros::BooleanPrimary;
 use std::fmt::Write;
 
-#[derive(BooleanPrimary)]
+#[derive(Clone, Copy, BooleanPrimary)]
 pub struct NestedSearchCondition<Cond>(pub(crate) Cond)
 where
     Cond: G::SearchCondition;

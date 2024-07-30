@@ -2,7 +2,7 @@ use crate::{grammar as G, Database, ToQuery};
 use sql_builder_macros::FromConstructor;
 use std::fmt::Write;
 
-#[derive(FromConstructor)]
+#[derive(Clone, Copy, FromConstructor)]
 pub struct FromConstructor<Columns, Override, Value>
 where
     Columns: G::InsertColumnList,

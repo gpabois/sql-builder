@@ -2,7 +2,7 @@ use crate::{grammar as G, Database, ToQuery};
 use sql_builder_macros::ColumnNameList;
 use std::fmt::Write;
 
-#[derive(ColumnNameList)]
+#[derive(Clone, Copy, ColumnNameList)]
 pub struct ColumnNameLink<Head, Tail>
 where
     Head: G::ColumnNameList,

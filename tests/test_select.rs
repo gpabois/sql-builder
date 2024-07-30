@@ -1,13 +1,15 @@
-use sql_builder::{eq, id, lit, select};
+use sql_builder::{eq, id, lit, or, select, select_columns};
 use sql_builder::{lt, prelude::*};
 
 #[test]
 fn test_select_basic() {
-    let selected_columns = id("col1")
-        .add_selection(id("col2").alias_column(id("aliased_column")))
-        .add_selection(id("col3"));
+    let selected_columns = select_columns!(
+        id!(col1),
+        id!(col2).alias_column(id!(aliased_column)),
+        id!(col3)
+    );
 
-    let table = id("my_table");
+    let table = id!(table);
     let stmt = select(selected_columns).from(table);
 
     let sql = stmt.to_string();
@@ -19,10 +21,10 @@ fn test_select_basic() {
 
 #[test]
 fn test_select_where() {
-    let cond = eq(id!(col1), lit!(10)).or(lt(id!(col2), lit!(20)));
-    let stmt = select(id!(col1).add_selection(id!(col2)))
-        .from(id!(my_table))
-        .r#where(cond);
+    let selected_columns = select_columns!(id!(col1), id!(col2));
+    let table = id!(my_table);
+    let cond = or(eq(id!(col1), lit!(10)), lt(id!(col2), lit!(20)));
+    let stmt = select(selected_columns).from(table).r#where(cond);
 
     let sql = stmt.to_string();
     assert_eq!(

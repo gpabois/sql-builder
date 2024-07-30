@@ -2,7 +2,7 @@ use sql_builder_macros::HavingClause;
 
 use crate::{Database, ToQuery};
 
-#[derive(HavingClause)]
+#[derive(Clone, Copy, HavingClause)]
 pub struct Having;
 
 impl ::std::fmt::Display for Having {

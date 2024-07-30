@@ -5,7 +5,7 @@ use crate::{
 use sql_builder_macros::SchemaName;
 use std::fmt::Write;
 
-#[derive(SchemaName)]
+#[derive(Clone, Copy, SchemaName)]
 pub struct SchemaName<CatName, SchemName>
 where
     CatName: Identifier,

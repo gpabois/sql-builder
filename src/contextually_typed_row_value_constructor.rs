@@ -3,7 +3,7 @@ use crate::{grammar as G, Database, ToQuery};
 use sql_builder_macros::ContextuallyTypedRowValueConstructor;
 use std::fmt::Write;
 
-#[derive(ContextuallyTypedRowValueConstructor)]
+#[derive(Clone, Copy, ContextuallyTypedRowValueConstructor)]
 pub struct RowValue<Elements>(Elements)
 where
     Elements: G::ContextuallyTypedRowValueConstructorElementList;

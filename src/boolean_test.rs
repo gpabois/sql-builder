@@ -2,7 +2,7 @@ use crate::{grammar as G, Database, ToQuery};
 use sql_builder_macros::BooleanTest;
 use std::fmt::Write;
 
-#[derive(BooleanTest)]
+#[derive(Clone, Copy, BooleanTest)]
 pub struct IsTruthValue<Primary, Truth>
 where
     Primary: G::BooleanPrimary,

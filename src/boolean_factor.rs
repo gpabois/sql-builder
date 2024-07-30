@@ -3,7 +3,7 @@ use crate::{Database, ToQuery};
 use sql_builder_macros::BooleanFactor;
 use std::fmt::Write;
 
-#[derive(BooleanFactor)]
+#[derive(Clone, Copy, BooleanFactor)]
 pub struct Not<BoolTest>(BoolTest)
 where
     BoolTest: G::BooleanTest;

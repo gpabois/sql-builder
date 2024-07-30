@@ -4,7 +4,7 @@ use crate::ToQuery;
 use sql_builder_macros::ContextuallyTypedRowValueExpressionList;
 use std::fmt::Write;
 
-#[derive(ContextuallyTypedRowValueExpressionList)]
+#[derive(Clone, Copy, ContextuallyTypedRowValueExpressionList)]
 pub struct ContextuallyTypedRowExpressionLink<Head, Tail>
 where
     Head: G::ContextuallyTypedRowValueExpressionList,

@@ -5,7 +5,7 @@ use std::fmt::Write;
 use crate::grammar as G;
 use crate::helpers as H;
 
-#[derive(TableExpression)]
+#[derive(Clone, Copy, TableExpression)]
 /// A table expression
 pub struct TableExpr<
     From: G::FromClause,

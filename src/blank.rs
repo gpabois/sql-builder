@@ -1,7 +1,7 @@
 use crate::{Database, Symbol, ToQuery, ToQueryContext};
 use sql_builder_macros::Blank;
 
-#[derive(Blank)]
+#[derive(Clone, Copy, Blank)]
 /// Blank type for default symbol trait implementation.
 pub struct Blank;
 

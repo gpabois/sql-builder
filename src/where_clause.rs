@@ -4,7 +4,7 @@ use crate::ToQuery;
 use sql_builder_macros::WhereClause;
 use std::fmt::Write;
 
-#[derive(WhereClause)]
+#[derive(Clone, Copy, WhereClause)]
 /// WHERE <search_condition>
 pub struct Where<SearchCond: G::SearchCondition> {
     search_cond: SearchCond,

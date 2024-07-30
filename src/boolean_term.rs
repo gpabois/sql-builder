@@ -2,7 +2,7 @@ use crate::{grammar as G, Database, ToQuery};
 use sql_builder_macros::BooleanTerm;
 use std::fmt::Write;
 
-#[derive(BooleanTerm)]
+#[derive(Clone, Copy, BooleanTerm)]
 pub struct And<Lhs, Rhs>
 where
     Lhs: G::BooleanTerm,

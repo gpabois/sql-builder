@@ -4,7 +4,7 @@ use crate::ToQuery;
 use sql_builder_macros::TableReferenceList;
 use std::fmt::Write;
 
-#[derive(TableReferenceList)]
+#[derive(Clone, Copy, TableReferenceList)]
 pub struct TableReferenceLink<Head, Tail>
 where
     Head: G::TableReferenceList,

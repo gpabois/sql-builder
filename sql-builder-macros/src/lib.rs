@@ -1,8 +1,11 @@
+mod select_sublist;
+
 use itertools::Itertools;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
-use quote::quote;
+use quote::{quote, ToTokens as _};
 use regex::Regex;
+use select_sublist::SelectSublist;
 use sql_builder_def::{detect_loop, fetch_deps, SymbolDef, SYMBOL_MAP};
 use sql_builder_meta_macros::create_symbol_derivations;
 use syn::{parse_macro_input, DeriveInput, Ident};
@@ -25,6 +28,7 @@ pub fn id(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+/// Created a bound dynamic parameter
 pub fn bind(input: TokenStream) -> TokenStream {
     let expr: syn::Expr = parse_macro_input!(input);
     quote! {::sql_builder::bind(#expr)}.into()
@@ -74,6 +78,15 @@ pub fn lit(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+/// Build a list of selected columns.
+pub fn select_columns(input: TokenStream) -> TokenStream {
+    let sublist: SelectSublist = parse_macro_input!(input);
+    sublist.to_token_stream().into()
+}
+
+#[proc_macro]
+/// Checks if the implemented grammar has loops.
+/// Used for debugging.
 pub fn check_symbol_loops(_: TokenStream) -> TokenStream {
     SYMBOL_MAP
         .keys()

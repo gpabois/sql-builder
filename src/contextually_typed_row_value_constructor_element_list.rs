@@ -3,7 +3,7 @@ use sql_builder_macros::ContextuallyTypedRowValueConstructorElementList;
 use crate::{grammar as G, Database, ToQuery};
 use std::fmt::Write;
 
-#[derive(ContextuallyTypedRowValueConstructorElementList)]
+#[derive(Clone, Copy, ContextuallyTypedRowValueConstructorElementList)]
 /// A linked-list of row values's constructor elements.
 pub struct RowElementLink<Head, Tail>(Head, Tail)
 where

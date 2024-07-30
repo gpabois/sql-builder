@@ -3,7 +3,7 @@ use crate::ToQuery;
 use sql_builder_macros::SignedNumericLiteral;
 use std::fmt::Write;
 
-#[derive(SignedNumericLiteral)]
+#[derive(Clone, Copy, SignedNumericLiteral)]
 pub enum SignedNumericLiteral {
     Int(i64),
     Float(f64),

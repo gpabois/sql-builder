@@ -4,6 +4,7 @@ use crate::ToQuery;
 use sql_builder_macros::Term;
 use std::fmt::Write;
 
+#[derive(Clone, Copy)]
 enum TermOperandKind {
     Mult,
     Div,
@@ -24,7 +25,7 @@ impl std::fmt::Display for TermOperandKind {
     }
 }
 
-#[derive(Term)]
+#[derive(Clone, Copy, Term)]
 pub struct TermOperand<Lhs, Rhs>
 where
     Lhs: G::Term,

@@ -3,7 +3,7 @@ use crate::ToQuery;
 use sql_builder_macros::UnsignedNumericLiteral;
 use std::fmt::Write;
 
-#[derive(UnsignedNumericLiteral)]
+#[derive(Clone, Copy, UnsignedNumericLiteral)]
 pub enum UnsignedNumericLiteral {
     Int(u64),
     Float(f64),

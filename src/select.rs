@@ -7,6 +7,7 @@ use crate::grammar as G;
 use crate::helpers as H;
 use crate::Database;
 
+#[derive(Clone, Copy)]
 /// The select quantifier, either ALL or DISTINCT.
 /// See [self::Select::distinct] or [self::Select::all]
 pub enum SetQuantifier {
@@ -50,6 +51,7 @@ pub fn select<Selection: G::SelectList>(select_list: Selection) -> BeginSelect<S
     BeginSelect { select_list }
 }
 
+#[derive(Clone, Copy)]
 /// Creates an incomplete select beginning.
 ///
 /// To get a valid select statement, [self::BeginSelect::from] must be used.
@@ -77,7 +79,7 @@ where
     }
 }
 
-#[derive(QuerySpecification)]
+#[derive(Clone, Copy, QuerySpecification)]
 /// Represents a select statement.
 /// See [self::select]
 pub struct Select<SeLs, TabExpr>

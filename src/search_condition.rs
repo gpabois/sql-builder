@@ -5,7 +5,7 @@ use sql_builder_macros::SearchCondition;
 use sqlx::Database;
 use std::fmt::Write;
 
-#[derive(SearchCondition)]
+#[derive(Clone, Copy, SearchCondition)]
 pub struct Or<Lhs, Rhs>
 where
     Lhs: G::SearchCondition,

@@ -3,7 +3,7 @@ use crate::ToQuery;
 use sql_builder_macros::TruthValue;
 use std::fmt::Write;
 
-#[derive(TruthValue)]
+#[derive(Clone, Copy, TruthValue)]
 pub struct True;
 
 impl AsRef<str> for True {
@@ -26,7 +26,7 @@ where
     }
 }
 
-#[derive(TruthValue)]
+#[derive(Clone, Copy, TruthValue)]
 pub struct False;
 
 impl AsRef<str> for False {
@@ -50,7 +50,7 @@ where
     }
 }
 
-#[derive(TruthValue)]
+#[derive(Clone, Copy, TruthValue)]
 pub struct Unknown;
 
 impl AsRef<str> for Unknown {

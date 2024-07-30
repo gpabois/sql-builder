@@ -3,7 +3,7 @@ use regex::Regex;
 use sql_builder_macros::Identifier;
 use std::fmt::Write;
 
-#[derive(Clone, Identifier)]
+#[derive(Copy, Clone, Identifier)]
 pub struct IdentifierRef<'s>(&'s str);
 
 impl IdentifierRef<'_> {

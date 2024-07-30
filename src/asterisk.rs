@@ -2,7 +2,7 @@ use crate::{Database, ToQuery};
 use sql_builder_macros::Asterisk;
 use std::fmt::Write;
 
-#[derive(Asterisk)]
+#[derive(Clone, Copy, Asterisk)]
 /// Asterisk (*)
 pub struct Asterisk;
 

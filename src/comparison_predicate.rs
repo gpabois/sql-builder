@@ -2,6 +2,7 @@ use crate::{grammar as G, Database, ToQuery};
 use sql_builder_macros::ComparisonPredicate;
 use std::fmt::Write;
 
+#[derive(Clone, Copy)]
 enum ComparisonKind {
     Equals,
     NotEquals,
@@ -39,7 +40,7 @@ impl std::fmt::Display for ComparisonKind {
     }
 }
 
-#[derive(ComparisonPredicate)]
+#[derive(Clone, Copy, ComparisonPredicate)]
 pub struct Compare<Lhs, Rhs>
 where
     Lhs: G::RowValuePredicand,

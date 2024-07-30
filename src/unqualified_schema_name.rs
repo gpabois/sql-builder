@@ -1,7 +1,7 @@
 use crate::{grammar::QualifiedIdentifier, Database, ToQuery};
 use sql_builder_macros::UnqualifiedSchemaName;
 
-#[derive(UnqualifiedSchemaName)]
+#[derive(Clone, Copy, UnqualifiedSchemaName)]
 pub struct UnqualifiedSchemaName<Id: QualifiedIdentifier>(Id);
 
 impl<Id> ::std::fmt::Display for UnqualifiedSchemaName<Id>

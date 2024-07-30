@@ -5,7 +5,7 @@ use sql_builder_macros::Either;
 use crate::Database;
 use crate::ToQuery;
 
-#[derive(Either)]
+#[derive(Clone, Copy, Either)]
 pub enum Either<Lhs, Rhs> {
     Left(Lhs),
     Right(Rhs),

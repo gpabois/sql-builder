@@ -4,7 +4,7 @@ use crate::ToQuery;
 use sql_builder_macros::IdentifierChain;
 use std::fmt::Write;
 
-#[derive(IdentifierChain)]
+#[derive(Clone, Copy, IdentifierChain)]
 pub struct IdentifierLink<Head, Tail>(Head, Tail)
 where
     Head: G::IdentifierChain,

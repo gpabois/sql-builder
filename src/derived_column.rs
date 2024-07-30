@@ -4,7 +4,7 @@ use crate::ToQuery;
 use sql_builder_macros::DerivedColumn;
 use std::fmt::Write;
 
-#[derive(DerivedColumn)]
+#[derive(Clone, Copy, DerivedColumn)]
 pub struct AliasedColumn<Value, Name>
 where
     Value: G::ValueExpression,

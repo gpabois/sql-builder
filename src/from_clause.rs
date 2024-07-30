@@ -5,7 +5,7 @@ use crate::{blank::Blank, either::Either, table_expression::TableExpr, ToQuery};
 use sql_builder_macros::FromClause;
 use std::fmt::Write;
 
-#[derive(FromClause)]
+#[derive(Clone, Copy, FromClause)]
 pub struct From<Refs>
 where
     Refs: G::TableReferenceList,

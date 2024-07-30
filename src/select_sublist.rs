@@ -4,9 +4,9 @@ use crate::ToQuery;
 use sql_builder_macros::SelectSublist;
 use std::fmt::Write;
 
+#[derive(Clone, Copy, SelectSublist)]
 /// A list of select expressions.
 /// Work recursively.
-#[derive(SelectSublist)]
 pub struct SelectLink<Head, Tail>(Head, Tail)
 where
     Head: G::SelectSublist,

@@ -12,7 +12,7 @@ use crate::grammar as G;
 use crate::helpers as H;
 use crate::Database;
 
-#[derive(Insert)]
+#[derive(Clone, Copy, Insert)]
 pub struct Insert<Target, Values>
 where
     Target: G::InsertionTarget,
