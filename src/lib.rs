@@ -66,8 +66,8 @@ mod truth_value;
 mod unqualified_schema_name;
 mod unsigned_numeric_literal;
 
+use sqlx::Arguments as _;
 pub use sqlx::Database;
-use sqlx::{Arguments, Execute};
 use std::marker::PhantomData;
 
 pub struct ToQueryContext<'q, DB>
@@ -153,6 +153,15 @@ sql_builder_macros::check_symbol_loops!();
 
 /// Common operations possible with the SQL symbols.
 pub trait Symbol: Sized {
+    /// Build the SQL fragment.
+    fn build<'q, DB>(&'q self) -> (String, DB::Arguments<'q>)
+    where
+        DB: Database,
+        Self: ToQuery<'q, DB>,
+    {
+        self.to_query().unwrap()
+    }
+
     /// Transform the current symbol if the predicate is true.
     fn transform_if<T>(
         self,
