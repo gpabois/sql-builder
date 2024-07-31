@@ -42,10 +42,93 @@ pub const WITH_REQUIRED_HELPERS_METHOD: u8 = 0b1000;
 
 /// Defines the symbols in the SQL grammar.
 pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
-    /*
-        *
-    */
+    // *
     "Asterisk" => SymbolDef::new(&[], 0),
+
+    // <query expression> ::= [ <with clause> ] <query expression body>
+    "QueryExpression" => SymbolDef::new(&["QueryExpressionBody"], 0),
+
+    // <query expression body> ::= <non-join query expression> | <joined table>
+    "QueryExpressionBody" => SymbolDef::new(&[
+        "NonJoinQueryExpression",
+        "JoinedTable"
+    ], 0),
+
+    // # Joined table
+    /*
+        <joined table> ::=
+            <cross join>
+            | <qualified join>
+            | <natural join>
+            | <union join>
+    */
+    "JoinedTable" => SymbolDef::new(&[
+        "CrossJoin",
+        "QualifiedJoin",
+        "NaturalJoin",
+        "UnionJoin"
+    ], 0),
+
+    // <cross join> ::= <table reference> CROSS JOIN <table primary>
+    "CrossJoin" => SymbolDef::new(&[], 0),
+
+    // <qualified join> ::= <table reference> [ <join type> ] JOIN <table reference> <join specification>
+    "QualifiedJoin" => SymbolDef::new(&[], 0),
+
+    // <natural join> ::= <table reference> NATURAL [ <join type> ] JOIN <table primary>
+    "NaturalJoin" => SymbolDef::new(&[], 0),
+
+    // <union join> ::= <table reference> UNION JOIN <table primary>
+    "UnionJoin" => SymbolDef::new(&[], 0),
+
+    // <join specification>    ::=   <join condition> | <named columns join>
+    "JoinSpecification" => SymbolDef::new(&["JoinCondition", "NamedColumnsJoin"], 0),
+
+    // <join condition> ::= ON <search condition>
+    "JoinCondition" => SymbolDef::new(&[], 0),
+
+    // <named columns join> ::= USING <left paren> <join column list> <right paren>
+    "NamedColumnsJoin" => SymbolDef::new(&[], 0),
+
+    // <join type> ::=  INNER | <outer join type> [ OUTER ]
+    "JoinType" => SymbolDef::new(&[], WITH_BLANK_IMPL),
+
+    // <outer join type> ::= LEFT | RIGHT | FULL
+    "OuterJoinType" => SymbolDef::new(&[], 0),
+
+    // <join column list> ::= <column name list>
+    "JoinColumnList" => SymbolDef::new(&["ColumnNameList"], 0),
+
+    /*
+    * <non-join query expression>    ::=
+           <non-join query term>
+         | <query expression body> UNION [ ALL | DISTINCT ] [ <corresponding spec> ] <query term>
+         | <query expression body> EXCEPT [ ALL | DISTINCT ] [ <corresponding spec> ] <query term>
+    * */
+    "NonJoinQueryExpression" => SymbolDef::new(&["NonJoinQueryTerm"], 0),
+
+    /*
+    * <non-join query term>    ::=
+         <non-join query primary>
+        | <query term> INTERSECT [ ALL | DISTINCT ] [ <corresponding spec> ] <query primary>
+    * */
+    "NonJoinQueryTerm" => SymbolDef::new(&["NonJoinQueryPrimary"], 0),
+
+    /*
+        <non-join query primary> ::=
+            <simple table>
+            | <left paren> <non-join query expression> <right paren>
+    */
+    "NonJoinQueryPrimary" => SymbolDef::new(&["SimpleTable"], 0),
+
+    /*
+        <simple table>    ::=
+            <query specification>
+            | <table value constructor>
+            | <explicit table>
+
+    */
+    "SimpleTable" => SymbolDef::new(&["QuerySpecification"], 0),
 
     /*
         <query specification> ::=
@@ -72,9 +155,10 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
         <from clause> ::= FROM <table reference list>
     */
     "FromClause" => SymbolDef::new(&[], WITH_HELPERS | WITH_BLANK_IMPL | WITH_EITHER_IMPL | WITH_REQUIRED_HELPERS_METHOD),
-    /*
-        <where clause> ::= WHERE <search condition>
-    */
+
+    // # WHERE CLAUSE
+
+    //<where clause> ::= WHERE <search condition>
     "WhereClause" => SymbolDef::new(&[], WITH_BLANK_IMPL | WITH_EITHER_IMPL),
     /*
         <group by clause> ::= GROUP BY [ <set quantifier> ] <grouping element list>
@@ -1125,7 +1209,6 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "RowValueConstructorElement" => SymbolDef::new(&[], 0),
     "RowValueExpression" => SymbolDef::new(&[], 0),
 
-    "JoinedTable" => SymbolDef::new(&[], 0),
     "WindowFunction" => SymbolDef::new(&[], 0),
     "NonparenthesizedValueExpressionPrimary" => SymbolDef::new(&[], 0),
     "DynamicParameterSpecification" => SymbolDef::new(&[], 0),

@@ -10,5 +10,4 @@ pub fn test_insert_simple() {
     let stmt = insert(table).columns(columns).values(values);
 
     println!("{}", stmt);
-    assert!(false)
 }

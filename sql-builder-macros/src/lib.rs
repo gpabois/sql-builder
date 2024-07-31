@@ -1,13 +1,14 @@
 mod column_name_list;
+mod identifier_chain;
 mod row_value;
 mod select_sublist;
 
 use column_name_list::ColumnNameList;
+use identifier_chain::IdentifierChain;
 use itertools::Itertools;
 use proc_macro::{self, TokenStream};
 use proc_macro2::Span;
 use quote::{quote, ToTokens as _};
-use regex::Regex;
 use row_value::RowValue;
 use select_sublist::SelectSublist;
 use sql_builder_def::{detect_loop, fetch_deps, SymbolDef, SYMBOL_MAP};
@@ -17,18 +18,9 @@ use syn::{parse_macro_input, DeriveInput, Ident};
 #[proc_macro]
 /// Creates an SQL identifier.
 pub fn id(input: TokenStream) -> TokenStream {
-    let ident: syn::Ident = parse_macro_input!(input);
-    let re = Regex::new("^[A-Za-z_]([A-Za-z0-9_])*").unwrap();
-    let str = ident.to_string();
+    let id_chain: IdentifierChain = parse_macro_input!(input);
 
-    if !re.is_match(&str) {
-        return quote! {
-            compile_error!(&format("{} not an identifier", &str));
-        }
-        .into();
-    }
-
-    quote! { ::sql_builder::id(#str) }.into()
+    quote! {#id_chain}.into()
 }
 
 #[proc_macro]

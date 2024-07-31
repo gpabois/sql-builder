@@ -54,15 +54,22 @@ pub mod comparison_predicate;
 pub mod contextually_typed_row_value_constructor;
 pub mod contextually_typed_row_value_constructor_element_list;
 pub mod contextually_typed_row_value_expression_list;
+pub mod cross_join;
 pub mod either;
 pub mod from_constructor;
 pub mod having_clause;
 pub mod identifier_chain;
 pub mod insert;
+pub mod join_condition;
+pub mod join_type;
+pub mod named_columns_join;
+pub mod natural_join;
+pub mod qualified_join;
 pub mod schema_name;
 pub mod search_condition;
 pub mod signed_numeric_literal;
 pub mod truth_value;
+pub mod union_join;
 pub mod unqualified_schema_name;
 pub mod unsigned_numeric_literal;
 
@@ -152,8 +159,8 @@ sql_builder_macros::check_symbol_loops!();
 
 /// Common operations possible with the SQL symbols.
 pub trait Symbol: Sized {
-    /// Build the SQL fragment.
-    fn build<'q, DB>(&'q self) -> (String, DB::Arguments<'q>)
+    /// Build an SQL query that can be executed by sqlx.
+    fn build_sqlx<'q, DB>(&'q self) -> (String, DB::Arguments<'q>)
     where
         DB: Database,
         Self: ToQuery<'q, DB>,
@@ -187,7 +194,8 @@ pub mod helpers {
         column_name_list::ColumnNameLink, contextually_typed_row_value_constructor::RowValue,
         contextually_typed_row_value_constructor_element_list::RowElementLink,
         contextually_typed_row_value_expression_list::ContextuallyTypedRowExpressionLink,
-        derived_column::AliasedColumn, grammar as G, identifier_chain::IdentifierLink,
+        cross_join::CrossJoin, derived_column::AliasedColumn, grammar as G,
+        identifier_chain::IdentifierLink, join_type::Inner, qualified_join::QualifiedJoinFragment,
         search_condition::Or, select::Select, select_sublist::SelectLink,
         table_expression::TableExpr, table_reference_list::TableReferenceLink, where_clause::Where,
     };
@@ -392,7 +400,25 @@ pub mod helpers {
             TableReferenceLink::new(self, table_ref)
         }
     }
-    pub trait TableReference: Sized {}
+    pub trait TableReference: Sized {
+        /// Cross join the table with another one.
+        fn cross_join<Dest>(self, dest: Dest) -> CrossJoin<Self, Dest>
+        where
+            Self: G::TableReference,
+            Dest: G::TablePrimary,
+        {
+            CrossJoin::new(self, dest)
+        }
+
+        /// Inner join the table with another one.
+        fn inner_join<Dest>(self, dest: Dest) -> QualifiedJoinFragment<Self, Dest, Inner>
+        where
+            Self: G::TableReference,
+            Dest: G::TablePrimary,
+        {
+            QualifiedJoinFragment::new(self, dest, Inner)
+        }
+    }
 
     pub trait ColumnNameList {
         fn add_column<Name>(self, column_name: Name) -> ColumnNameLink<Self, Name>
