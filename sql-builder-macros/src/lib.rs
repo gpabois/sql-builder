@@ -24,6 +24,35 @@ pub fn id(input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
+pub fn invoke(input: TokenStream) -> TokenStream {
+    let call: syn::ExprCall = parse_macro_input!(input);
+
+    let name = call.func;
+
+    let args = if call.args.is_empty() {
+        quote! {::sql_builder::blank::Blank}
+    } else {
+        let head = call.args.first().unwrap();
+        let tail = &call
+            .args
+            .iter()
+            .skip(1)
+            .map(|expr| quote! {.add_sql_argument(#expr)})
+            .collect::<proc_macro2::TokenStream>();
+
+        quote! {#head #tail}
+    };
+
+    quote! {
+        ::sql_builder::routine_invocation::RoutineInvocation::new(
+            ::sql_builder::id!(#name),
+            #args
+        )
+    }
+    .into()
+}
+
+#[proc_macro]
 /// Created a bound dynamic parameter
 pub fn bind(input: TokenStream) -> TokenStream {
     let expr: syn::Expr = parse_macro_input!(input);

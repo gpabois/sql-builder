@@ -1229,7 +1229,19 @@ pub static SYMBOL_MAP: phf::Map<&'static str, SymbolDef> = phf_map! {
     "CollectionValueConstructor" => SymbolDef::new(&[], 0),
     "ArrayElementReference" => SymbolDef::new(&[], 0),
     "MultisetElementReference" => SymbolDef::new(&[], 0),
+    // <routine invocation>  ::=<routine name> <SQL argument list>
     "RoutineInvocation" => SymbolDef::new(&[], 0),
+    // <routine name> ::= [ <schema name> <period> ] <qualified identifier>
+    "RoutineName" => SymbolDef::new(&["QualifiedIdentifier"], 0),
+    // <SQL argument list> ::= <left paren> [ <SQL argument> [ { <comma> <SQL argument> }... ] ] <right paren>
+    "SQLArgumentList" => SymbolDef::new(&["SQLArgument"], WITH_BLANK_IMPL | WITH_HELPERS ),
+    /*
+        <SQL argument>    ::=
+            <value expression>
+            | <generalized expression>
+            | <target specification>
+    */
+    "SQLArgument" => SymbolDef::new(&["ValueExpression"], 0),
     "NextValueExpression" => SymbolDef::new(&[], 0),
 };
 

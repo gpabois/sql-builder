@@ -65,9 +65,11 @@ pub mod join_type;
 pub mod named_columns_join;
 pub mod natural_join;
 pub mod qualified_join;
+pub mod routine_invocation;
 pub mod schema_name;
 pub mod search_condition;
 pub mod signed_numeric_literal;
+pub mod sql_argument_list;
 pub mod truth_value;
 pub mod union_join;
 pub mod unqualified_schema_name;
@@ -150,7 +152,7 @@ pub use numeric_value_expression::{add, sub};
 pub use search_condition::or;
 pub use select::select;
 pub use signed_numeric_literal::signed_numeric_lit;
-pub use sql_builder_macros::{bind, columns, id, lit, row_value, select_columns};
+pub use sql_builder_macros::{bind, columns, id, invoke, lit, row_value, select_columns};
 pub use term::{div, mult};
 pub use truth_value::{False, True, Unknown};
 pub use unsigned_numeric_literal::unsigned_numeric_lit;
@@ -197,7 +199,8 @@ pub mod helpers {
         cross_join::CrossJoin, derived_column::AliasedColumn, grammar as G,
         identifier_chain::IdentifierLink, join_type::Inner, qualified_join::QualifiedJoinFragment,
         search_condition::Or, select::Select, select_sublist::SelectLink,
-        table_expression::TableExpr, table_reference_list::TableReferenceLink, where_clause::Where,
+        sql_argument_list::SQLArgumentLink, table_expression::TableExpr,
+        table_reference_list::TableReferenceLink, where_clause::Where,
     };
 
     pub type QuerySpecificationWithTransformedWhere<Qs, SearchCond> = Select<
@@ -501,6 +504,16 @@ pub mod helpers {
             Element: G::ContextuallyTypedRowValueConstructorElement,
         {
             RowElementLink::new(self, element)
+        }
+    }
+
+    pub trait SQLArgumentList: Sized {
+        fn add_sql_argument<Arg>(self, arg: Arg) -> SQLArgumentLink<Self, Arg>
+        where
+            Self: G::SQLArgumentList,
+            Arg: G::SQLArgument,
+        {
+            SQLArgumentLink::new(self, arg)
         }
     }
 }
